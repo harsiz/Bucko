@@ -258,6 +258,11 @@ class DialogueManager:
                     continue  # HTTP on_fail: skip
                 result.append(evaluated)
             # Ignore unknown line types
+
+        # If this block captures user input, append a capture sentinel as the last item
+        if block.input_capture and block.input_store:
+            result.append(("input_capture", block.input_store))
+
         return result
 
     def resolve_next(self, block: DialogueBlock) -> Optional["DialogueBlock"]:

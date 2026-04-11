@@ -299,8 +299,10 @@ class BuckoApp:
         self.dialogue_text.pack(fill=BOTH, expand=True)
 
         # Configure text tags
-        self.dialogue_text.tag_config("bucko", foreground="#7ec8e3", font=("Consolas", 12, "bold"))
-        self.dialogue_text.tag_config("system", foreground="#888888", font=("Consolas", 10, "italic"))
+        self.dialogue_text.tag_config("bucko", foreground="#c9e8f5", font=("Consolas", 12))
+        self.dialogue_text.tag_config("speaker", foreground="#7ec8e3", font=("Consolas", 11, "bold"))
+        self.dialogue_text.tag_config("system", foreground="#555577", font=("Consolas", 10, "italic"))
+        self.dialogue_text.tag_config("user_label", foreground="#6ab87a", font=("Consolas", 11, "bold"))
         self.dialogue_text.tag_config("user", foreground="#a8d8a8", font=("Consolas", 12))
 
         # Bottom area: NEXT button + input bar
@@ -412,7 +414,7 @@ class BuckoApp:
         if self.discord:
             self.discord.update(session_num)
 
-        if self.is_first_launch:
+        if self.is_first_launch or not self.state.user_name:
             self._trigger_dialogue_id("setup::disclaimer")
         else:
             self._trigger_dialogue_id("setup::returning_user")
@@ -443,6 +445,10 @@ class BuckoApp:
         self._current_block = block
         self._pending_lines = rendered_lines
         self._next_id = block.next_id
+
+        # Visual: blank line + speaker label before each new block
+        self._append_text("\n", tag="")
+        self._append_text("Bucko", tag="speaker")
 
         self._process_next_line()
 
@@ -477,10 +483,11 @@ class BuckoApp:
         """Called after a line finishes typewriting."""
         if self._pending_lines:
             peek = self._pending_lines[0]
-            if isinstance(peek, tuple) and peek[0] == "pause":
+            if isinstance(peek, tuple) and peek[0] in ("pause", "input_capture"):
+                # pause and input_capture don't need a NEXT click — auto-advance
                 self._process_next_line()
             else:
-                # Show NEXT button for user to advance
+                # Text line — show NEXT button
                 self._show_next_button()
         else:
             self._on_block_complete()
@@ -544,7 +551,7 @@ class BuckoApp:
         if not segments:
             segments = [("text", text)]
 
-        self._append_text("\n", tag="bucko")
+        self._append_text("\n  ", tag="bucko")  # indent each line under the speaker label
         self._typewrite_segments(segments, 0, 0, callback)
 
     def _typewrite_segments(self, segments: list, seg_idx: int, char_idx: int, callback) -> None:
@@ -593,7 +600,9 @@ class BuckoApp:
         self.dialogue_text.config(state=tk.DISABLED)
 
     def _append_user_line(self, text: str) -> None:
-        self._append_text(f"\n{text}", tag="user")
+        user_label = self.state.user_name or "You"
+        self._append_text(f"\n{user_label}", tag="user_label")
+        self._append_text(f"\n  {text}", tag="user")
 
     def _append_system_line(self, text: str) -> None:
         self._append_text(f"\n{text}", tag="system")

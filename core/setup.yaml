@@ -51,7 +51,7 @@ dialogues:
 
   - dialogue_id: "returning_user"
     lines:
-      - "ayo {{memory.user.name}}, you're back."
+      - "{{if memory.user.name}}ayo {{memory.user.name}}, you're back.{{else}}ayo, you're back.{{endif}}"
       - "session #{{counter.get: 'times_talked'}} let's go"
     mood_effect:
       warmth: +5
