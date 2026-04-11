@@ -1,4 +1,4 @@
-# Mod Documentation — All Mod Related..
+# Mod Documentation >> All Mod Related..
 
 everything you need to know to build a Bucko mod. this document covers every BDL expression, every config field, every namespace, every console command, every edge case.
 
