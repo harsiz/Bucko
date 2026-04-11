@@ -32,7 +32,7 @@ from engine.discord_rpc import DiscordRPC
 from engine import updater as _updater
 
 # ── Version ────────────────────────────────────────────────────────────────────
-APP_VERSION = "2.0.0"   # Baked into EXE by PyInstaller. Never read from config.
+APP_VERSION = 2   # Integer. Baked into EXE by PyInstaller. Never read from config.
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 CORE_DIR = ROOT / "core"

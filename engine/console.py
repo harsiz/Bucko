@@ -20,7 +20,7 @@ class ConsoleSystem:
         cache: "ConfigCache",
         log: Callable[[str], None],
         client_version: int,
-        app_version: str = "0.0.0",
+        app_version: int = 0,
         app_callbacks: dict = None,
     ):
         self.state = state

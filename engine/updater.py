@@ -62,18 +62,20 @@ class ReleaseInfo:
 
 
 # ── Version comparison ─────────────────────────────────────────────────────────
+# Bucko uses integer versions: v1, v2, v3, ...
+# GitHub release tags are expected to be "v2", "v3", etc.
 
-def _parse_version(v: str) -> tuple:
-    """Parse "v2.1.0" or "2.1.0" into (2, 1, 0). Returns (0,) on failure."""
+def _parse_version(v) -> int:
+    """Parse "v3", "3", or 3 into integer 3. Returns 0 on failure."""
     try:
-        return tuple(int(x) for x in v.lstrip("v").split("."))
+        return int(str(v).lstrip("v").strip())
     except (ValueError, AttributeError):
-        return (0,)
+        return 0
 
 
-def is_newer(remote_tag: str, local_version: str) -> bool:
-    """Return True if remote_tag represents a higher version than local_version."""
-    return _parse_version(remote_tag) > _parse_version(local_version)
+def is_newer(remote_tag: str, local_version: int) -> bool:
+    """Return True if remote_tag is a higher integer version than local_version."""
+    return _parse_version(remote_tag) > int(local_version)
 
 
 # ── Network helpers ────────────────────────────────────────────────────────────
@@ -109,7 +111,7 @@ def _get(url: str, timeout: int = REQUEST_TIMEOUT) -> bytes:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-def fetch_release_info(current_version: str) -> ReleaseInfo:
+def fetch_release_info(current_version: int) -> ReleaseInfo:
     """
     Fetch the latest GitHub release and compare to current_version.
     Safe to call from a background thread.
@@ -145,8 +147,7 @@ def fetch_release_info(current_version: str) -> ReleaseInfo:
             content_url  = aurl
             content_size = asize
 
-    # Source zip fallback for content updates
-    clean_tag = tag.lstrip("v")
+    # Source zip fallback for content updates (tag is e.g. "v3")
     zip_url = f"{GITHUB_URL}/archive/refs/tags/{tag}.zip"
 
     return ReleaseInfo(
