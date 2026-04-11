@@ -227,6 +227,13 @@ class BuckoApp:
         # ── Start session ──────────────────────────────────────────────────
         self.root.after(200, self._start_session)
 
+        # ── Global Tkinter callback exception hook ─────────────────────────
+        # Tkinter normally just prints exceptions from after() callbacks to
+        # stderr and continues — this means a crash mid-typewriter leaves the
+        # UI completely frozen (typing indicator stuck, input disabled).
+        # Override the hook so any unhandled exception triggers a clean recovery.
+        self.root.report_callback_exception = self._on_callback_exception
+
     # ────────────────────────────────────────────────────────────────────────
     #  Loading helpers
     # ────────────────────────────────────────────────────────────────────────
@@ -471,6 +478,34 @@ class BuckoApp:
 
     def _trigger_dialogue_from_console(self, block) -> None:
         self.root.after(0, lambda: self._start_block(block))
+
+    def _on_callback_exception(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Tkinter calls this whenever an after() or event callback raises.
+        We log it and attempt a graceful UI recovery so the user doesn't
+        have to restart the client.
+        """
+        import traceback
+        tb_str = "".join(traceback.format_exception(exc_type, exc_val, exc_tb))
+        _log(f"[ERROR] Unhandled callback exception:\n{tb_str}")
+        self._recover_from_stuck_state()
+
+    def _recover_from_stuck_state(self) -> None:
+        """
+        Best-effort recovery from a frozen UI state.
+        Hides the typing indicator, cancels any pending typewriter, and
+        re-enables user input so the conversation can continue.
+        """
+        try:
+            self._hide_typing_indicator()
+        except Exception:
+            pass
+        self._pending_lines = []
+        self._awaiting_input = True
+        try:
+            self._enable_input()
+        except Exception:
+            pass
 
     def _start_block(self, block) -> None:
         self._hide_typing_indicator()
@@ -856,6 +891,14 @@ class BuckoApp:
         self._enable_input()
 
     def _process_input(self, user_input: str) -> None:
+        try:
+            self._process_input_inner(user_input)
+        except Exception as e:
+            import traceback
+            _log(f"[ERROR] _process_input crashed: {e}\n{traceback.format_exc()}")
+            self._recover_from_stuck_state()
+
+    def _process_input_inner(self, user_input: str) -> None:
         # Update interests
         words = user_input.lower().split()
         topics = ["osu", "osu!", "anime", "gaming", "music", "valorant", "fps", "cs", "csgo", "cs2"]
