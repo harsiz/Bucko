@@ -243,7 +243,11 @@ class DialogueManager:
             key=lambda b: (b.priority, b.trigger_type_priority()),
             reverse=True
         )
-        return candidates[0]
+        # If multiple blocks tie on (priority, specificity), pick randomly.
+        # This prevents load-order bias when two mods both handle the same trigger.
+        top_score = (candidates[0].priority, candidates[0].trigger_type_priority())
+        tied = [b for b in candidates if (b.priority, b.trigger_type_priority()) == top_score]
+        return random.choice(tied)
 
     def _check_condition(self, cond_str: str) -> bool:
         """Evaluate a BDL condition string (may include {{ }})."""
