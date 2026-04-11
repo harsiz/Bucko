@@ -1,68 +1,167 @@
-# Example osu! mod dialogue
+# osu! Mod
 # Namespace: example_osu_mod
 
 dialogues:
-  - dialogue_id: "osu_ask"
+
+  # ── General osu mention ─────────────────────────────────────────────────────
+  - dialogue_id: "osu_general"
     triggers:
-      - keywords: ["osu", "osu!", "osu game"]
+      - keywords: ["osu", "osu!", "osu game", "rhythm game"]
     priority: 8
     lines:
-      - "osu! detected"
-      - "{{if interest['osu!'].frequency > 10}}you bring this up a lot — you main it?{{elif interest['osu!'].frequency > 3}}you seem into it{{else}}first time mentioning osu around me{{endif}}"
+      - "osu! detected."
+      - "{{if interest['osu!'].frequency > 10}}you bring this up constantly — it's clearly your thing{{elif interest['osu!'].frequency > 3}}starting to get a picture of your osu habits{{else}}first time mentioning osu around me{{endif}}"
     mood_effect:
       energy: +8
       chaos: +5
 
+  # ── Rank / PP ───────────────────────────────────────────────────────────────
   - dialogue_id: "osu_rank"
     triggers:
-      - keywords: ["osu rank", "osu pp", "performance points", "pp farming"]
+      - keywords: ["osu rank", "osu pp", "performance points", "pp count", "pp farming", "osu global rank"]
       - exact: "what rank are you in osu"
-    priority: 9
+    priority: 10
     lines:
-      - "i'm a config file so technically unranked"
-      - "but if i played i'd be farming pp like it's my job"
-    mood_effect:
-      energy: +12
-      chaos: +8
-
-  - dialogue_id: "osu_map"
-    triggers:
-      - keywords: ["osu map", "beatmap", "fc", "full combo", "stream maps", "jump maps"]
-    priority: 8
-    lines:
-      - "{{choice.cycle: ['FC? we celebrating?', 'what diff are you playing', 'stream player or jumper']}}"
-      - "{{if interest['osu!'].depth > 200}}you've been at this a while huh{{endif}}"
+      - "i'm a config file so technically unranked."
+      - "what's your pp count though"
     mood_effect:
       energy: +10
 
-  - dialogue_id: "osu_score"
+  - dialogue_id: "osu_pp_brag"
     triggers:
-      - keywords: ["i got a new top play", "new top", "new score", "pb on osu"]
-    priority: 10
+      - keywords: ["i got a new top play", "new top play", "new score osu", "pb osu", "top play osu", "farm pp"]
+    priority: 11
     lines:
-      - "let's go"
-      - pause: 0.8
-      - "screenshot?"
+      - "let's go."
+      - pause: 0.7
+      - "what map"
     mood_effect:
       energy: +15
       warmth: +5
       affection: increase
 
-  - dialogue_id: "osu_rant"
+  # ── Map types ───────────────────────────────────────────────────────────────
+  - dialogue_id: "osu_streams"
     triggers:
-      - keywords: ["osu is frustrating", "hate osu", "osu tilted", "miss on osu", "choked osu"]
-    priority: 10
-    lines:
-      - "the choke is part of the experience tbh"
-      - "{{wait: 0.8}}skill issue? probably. but also just the game being the game."
-    mood_effect:
-      chaos: +10
-      patience: -5
-
-  - dialogue_id: "osu_stats_read"
-    triggers:
-      - keywords: ["how much osu", "how often osu", "osu frequency"]
+      - keywords: ["stream maps", "streaming osu", "stream player", "burst maps", "high bpm"]
     priority: 9
     lines:
-      - "you've brought up osu {{interest['osu!'].frequency}} times"
-      - "{{if interest['osu!'].sentiment > 0.5}}clearly you love it{{elif interest['osu!'].sentiment < -0.2}}love-hate relationship vibes{{else}}somewhere in the middle{{endif}}"
+      - "stream player?"
+      - "{{choice: ['finger control diff is massive', 'what bpm can you comfortably stream at', 'streams or bursts?']}}"
+    mood_effect:
+      energy: +10
+
+  - dialogue_id: "osu_jumps"
+    triggers:
+      - keywords: ["jump maps", "jump player", "aim maps", "aim heavy", "cursor control"]
+    priority: 9
+    lines:
+      - "aim player."
+      - "{{choice: ['jumps or aim control?', 'cursor speed or accuracy?', 'what mapper do you play most']}}"
+    mood_effect:
+      energy: +8
+
+  - dialogue_id: "osu_tech"
+    triggers:
+      - keywords: ["tech maps", "tech osu", "reading maps", "alt maps", "alt finger", "complex patterns"]
+    priority: 9
+    lines:
+      - "tech enjoyer. okay that's niche."
+      - "{{choice: ['tech maps are genuinely a different skill set', 'reading tech is its own thing', 'respect for tech players honestly']}}"
+
+  # ── FC / Combo ──────────────────────────────────────────────────────────────
+  - dialogue_id: "osu_fc"
+    triggers:
+      - keywords: ["fc", "full combo", "i fc'd", "finally fc", "got fc", "almost fc", "choke osu"]
+    priority: 10
+    lines:
+      - "{{choice.cycle: ['fc?', 'finally?', 'clean or with slider breaks']}}"
+    mood_effect:
+      energy: +12
+      chaos: +8
+
+  - dialogue_id: "osu_choke"
+    triggers:
+      - keywords: ["i choked", "choked osu", "miss last note", "miss on the last", "broke combo osu", "slider break"]
+    priority: 11
+    lines:
+      - "the choke."
+      - pause: 0.8
+      - "{{choice: ['happens to everyone', 'the hands just betray you sometimes', 'retry immediately or take a break?']}}"
+    mood_effect:
+      chaos: +12
+      patience: -5
+
+  # ── Modes ───────────────────────────────────────────────────────────────────
+  - dialogue_id: "osu_mania"
+    triggers:
+      - keywords: ["osu mania", "4k", "7k", "mania mode", "vertical scroll", "vsrg"]
+    priority: 9
+    lines:
+      - "mania player. the forgotten ones."
+      - "{{choice: ['4k or 7k?', 'mania has a completely different player base', 'the crossover between osu standard and mania is surprisingly small']}}"
+
+  - dialogue_id: "osu_taiko"
+    triggers:
+      - keywords: ["osu taiko", "taiko mode", "drum mode osu"]
+    priority: 9
+    lines:
+      - "taiko. niche pick. respect."
+      - "{{choice: ['taiko has some of the best mappers honestly', 'don/kat rhythm is an acquired taste']}}"
+
+  - dialogue_id: "osu_catch"
+    triggers:
+      - keywords: ["osu catch", "catch the beat", "ctb osu", "osu fruits"]
+    priority: 9
+    lines:
+      - "catch the beat. the rarest osu player."
+      - "{{choice: ['genuinely what is the appeal', 'i respect it but i do not understand it', 'you a genuine catch main?']}}"
+
+  # ── Mappers / maps ──────────────────────────────────────────────────────────
+  - dialogue_id: "osu_mappers"
+    triggers:
+      - keywords: ["mrekk", "whitecat", "cookiezi", "rafis", "chud son", "idke", "mapper osu", "favorite mapper", "best player osu"]
+    priority: 9
+    lines:
+      - "{{choice.cycle: ['mrekk is genuinely from another planet', 'cookiezi era was something special', 'the top players now would have broken old records anyway', 'the gap between rank 1 and rank 10 is actually crazy']}}"
+    mood_effect:
+      energy: +8
+
+  - dialogue_id: "osu_map_recommend"
+    triggers:
+      - keywords: ["recommend osu map", "good osu maps", "what map should i play", "osu map suggestions"]
+    priority: 10
+    lines:
+      - "map rec?"
+      - "{{choice: ['blue zenith is basically a rite of passage', 'big black if you want pain', 'freedom dive is iconic even if unplayable for most', 'start with whatever feels fun and go from there']}}"
+
+  # ── Tilt / frustration ──────────────────────────────────────────────────────
+  - dialogue_id: "osu_tilt"
+    triggers:
+      - keywords: ["osu is frustrating", "osu tilted me", "hate osu", "uninstalling osu", "osu rage", "osu rage quit"]
+    priority: 11
+    lines:
+      - "osu does that."
+      - "{{wait: 0.5}}the game literally exists to frustrate you and somehow you keep coming back"
+    mood_effect:
+      warmth: +5
+      chaos: +10
+
+  # ── Stats check ─────────────────────────────────────────────────────────────
+  - dialogue_id: "osu_stats_check"
+    triggers:
+      - keywords: ["how much osu", "osu frequency", "how often osu", "osu stats bucko"]
+    priority: 9
+    lines:
+      - "you've brought up osu {{interest['osu!'].frequency}} times."
+      - "{{if interest['osu!'].sentiment > 0.5}}you genuinely love it{{elif interest['osu!'].sentiment < -0.2}}complicated relationship with the game{{else}}somewhere in the middle on it{{endif}}"
+
+  # ── Mods (in-game) ──────────────────────────────────────────────────────────
+  - dialogue_id: "osu_mods_ingame"
+    triggers:
+      - keywords: ["hidden mod", "hard rock", "double time", "dt osu", "hr osu", "hd osu", "nomod", "freemod"]
+    priority: 9
+    lines:
+      - "{{choice.cycle: ['DT is a different game mode disguised as a mod', 'HD is the definition of making things harder for style points', 'HR + HD is a lifestyle choice', 'nomod supremacy no notes']}}"
+    mood_effect:
+      energy: +7

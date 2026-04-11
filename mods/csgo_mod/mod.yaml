@@ -1,0 +1,10 @@
+name: "CS:GO / CS2 Mod"
+id: "csgo_mod"
+mod_version: 1
+version_support: [1]
+description: "CS:GO and CS2 dialogue. Ranks, maps, weapons, the usual."
+author: "harsiz"
+
+console_commands:
+  - name: "stats"
+    description: "Show tracked CS interest data"

@@ -1,0 +1,176 @@
+# CS:GO / CS2 Mod
+# Namespace: csgo_mod
+
+dialogues:
+
+  # ── General CS mention ──────────────────────────────────────────────────────
+  - dialogue_id: "cs_general"
+    triggers:
+      - keywords: ["csgo", "cs:go", "cs2", "counter strike", "counter-strike"]
+    priority: 8
+    lines:
+      - "{{choice.cycle: ['cs player spotted', 'counter strike fan', 'oh a CS person']}}"
+      - "{{if interest['cs2'].frequency > 8}}you mention this a lot — clearly your main game{{elif interest['cs2'].frequency > 3}}getting a feel for your cs habits{{else}}first time you've brought up cs{{endif}}"
+    mood_effect:
+      energy: +8
+
+  # ── Rank questions ──────────────────────────────────────────────────────────
+  - dialogue_id: "cs_rank"
+    triggers:
+      - keywords: ["what rank", "my rank", "cs rank", "cs2 rank", "premier rating", "elo", "faceit level", "faceit lvl"]
+      - exact: "what rank are you in cs"
+      - exact: "what rank are you in cs2"
+    priority: 10
+    lines:
+      - "i'm unranked obviously. i'm a YAML file."
+      - "{{choice.cycle: ['what rank are you though', 'premier or matchmaking?', 'faceit or valve mm?']}}"
+    mood_effect:
+      energy: +10
+
+  - dialogue_id: "cs_rank_brag"
+    triggers:
+      - keywords: ["i'm global", "i got global", "i'm supreme", "reached global", "got global elite", "global elite"]
+    priority: 11
+    lines:
+      - "global elite. respect."
+      - "{{wait: 0.8}}you get carried or did you grind that legit"
+    mood_effect:
+      energy: +15
+      chaos: +8
+
+  - dialogue_id: "cs_rank_low"
+    triggers:
+      - keywords: ["i'm silver", "stuck in silver", "silver player", "gold nova", "stuck in gold nova", "mge", "dmg", "le rank", "lem rank"]
+    priority: 10
+    lines:
+      - "{{choice: ['the ranked grind is real', 'silver is a mindset more than a rank tbh', 'gold nova is where dreams go to die apparently']}}"
+      - "just keep playing i guess"
+    mood_effect:
+      patience: -3
+      energy: +5
+
+  # ── Maps ────────────────────────────────────────────────────────────────────
+  - dialogue_id: "cs_maps_dust2"
+    triggers:
+      - keywords: ["dust2", "dust 2", "d2"]
+    priority: 9
+    lines:
+      - "dust2. the map that will never die."
+      - "{{choice: ['long A or B tunnels?', 'you a cat player or a mid player?', 'still the most played map in history somehow']}}"
+
+  - dialogue_id: "cs_maps_general"
+    triggers:
+      - keywords: ["inferno", "mirage", "nuke", "overpass", "vertigo", "ancient", "anubis", "cs map", "map pool"]
+    priority: 8
+    lines:
+      - "{{choice.cycle: ['map pool talk', 'which one?', 'some maps hit different']}}"
+      - "{{choice: ['inferno is a classic', 'mirage gets way too much hate', 'nuke is literally architect porn', 'vertigo is controversial and you know it', 'ancient is underrated']}}"
+
+  # ── Weapons ─────────────────────────────────────────────────────────────────
+  - dialogue_id: "cs_awp"
+    triggers:
+      - keywords: ["awp", "awping", "awper", "sniping in cs", "sniper cs"]
+    priority: 9
+    lines:
+      - "awp talk."
+      - "{{choice.cycle: ['one tap merchant energy', 'awpers are built different ngl', 'nothing more satisfying than a clean awp ace']}}"
+    mood_effect:
+      energy: +12
+      chaos: +5
+
+  - dialogue_id: "cs_ak_m4"
+    triggers:
+      - keywords: ["ak47", "ak-47", "m4a4", "m4a1", "m4 cs", "rifle cs", "rifle round"]
+    priority: 8
+    lines:
+      - "{{choice: ['ak or m4 is genuinely a philosophical debate', 'ak47 spray is an art form', 'm4a1-s supremacy no debate']}}"
+
+  - dialogue_id: "cs_deagle"
+    triggers:
+      - keywords: ["deagle", "desert eagle", "deagle ace", "pistol round"]
+    priority: 9
+    lines:
+      - "deagle."
+      - pause: 0.7
+      - "{{choice: ['the most satisfying gun in the game', 'high risk high reward', 'pistol round deagle ace is top tier dopamine']}}"
+    mood_effect:
+      chaos: +10
+
+  # ── Economy ─────────────────────────────────────────────────────────────────
+  - dialogue_id: "cs_economy"
+    triggers:
+      - keywords: ["eco round", "force buy", "full buy", "save round", "buying cs", "economy cs", "cs eco"]
+    priority: 9
+    lines:
+      - "eco or force buy situation?"
+      - "{{choice: ['eco rounds are just deagle/zeus gambling tbh', 'the force buy almost always backfires', 'saving is the right play and you know it']}}"
+    mood_effect:
+      energy: +6
+
+  # ── CS2 vs CSGO ─────────────────────────────────────────────────────────────
+  - dialogue_id: "cs2_vs_csgo"
+    triggers:
+      - keywords: ["cs2 vs csgo", "csgo was better", "miss csgo", "cs2 is worse", "bring back csgo", "cs2 bad", "cs2 good"]
+    priority: 11
+    lines:
+      - "the csgo vs cs2 debate will never end."
+      - "{{choice: ['people said the same thing when csgo replaced cs:s', 'nostalgia does things to people', 'cs2 has better graphics at least. probably.']}}"
+    mood_effect:
+      chaos: +8
+
+  # ── Cheaters / VAC ──────────────────────────────────────────────────────────
+  - dialogue_id: "cs_cheaters"
+    triggers:
+      - keywords: ["cheater", "hacker", "aimbot", "wallhack", "vac ban", "trust factor", "overwatch"]
+    priority: 10
+    lines:
+      - "cheaters in cs. a tale as old as time."
+      - "{{choice.cycle: ['trust factor is a mystery honestly', 'the vac ban hammer is way too slow', 'faceit anti-cheat is the move if you are serious', 'overwatch was better than VAC and they killed it']}}"
+    mood_effect:
+      patience: -8
+      chaos: +12
+
+  # ── Clutch / plays ──────────────────────────────────────────────────────────
+  - dialogue_id: "cs_clutch"
+    triggers:
+      - keywords: ["clutch cs", "i clutched", "clutch round", "1v5", "1v4", "1v3", "ace cs", "i aced"]
+    priority: 11
+    lines:
+      - "{{choice.cycle: ['actually go on', 'i need details', 'describe it step by step']}}"
+    mood_effect:
+      energy: +15
+      chaos: +10
+      affection: increase
+
+  - dialogue_id: "cs_tilt"
+    triggers:
+      - keywords: ["cs is tilting", "tilted cs", "cs made me rage", "cs rage quit", "uninstalling cs"]
+    priority: 10
+    lines:
+      - "{{choice: ['cs has been making people want to uninstall since 2012', 'take a break. seriously.', 'the tilt is part of the experience unfortunately']}}"
+      - "{{wait: 0.6}}you still love it though"
+    mood_effect:
+      warmth: +5
+      chaos: +8
+
+  # ── Pro scene ───────────────────────────────────────────────────────────────
+  - dialogue_id: "cs_pro_scene"
+    triggers:
+      - keywords: ["pro cs", "cs pro", "s1mple", "zywoo", "navi", "faze clan", "vitality", "blast premier", "major cs", "cs major"]
+    priority: 9
+    lines:
+      - "pro scene. ok."
+      - "{{choice.cycle: ['s1mple vs zywoo is a debate that will age like fine wine', 'navi vs faze is a classic rivalry', 'majors are genuinely the best event in esports', 'blast premier slaps as a format']}}"
+    mood_effect:
+      energy: +8
+
+  # ── Faceit ──────────────────────────────────────────────────────────────────
+  - dialogue_id: "cs_faceit"
+    triggers:
+      - keywords: ["faceit", "faceit level", "faceit elo", "faceit hub"]
+    priority: 10
+    lines:
+      - "faceit over valve mm. correct decision."
+      - "{{choice: ['what level?', 'the elo grind is real', 'faceit level 10 is the dream']}}"
+    mood_effect:
+      energy: +7

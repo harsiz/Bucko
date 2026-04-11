@@ -2,10 +2,12 @@ client_version: 1
 
 ui:
   default_next_label: "NEXT"
-  typewriter_speed: 0.03       # seconds per character
+  typewriter_speed: 0.03 # seconds per character
   window_width: 900
   window_height: 650
-  theme: "darkly"              # ttkbootstrap theme
+  theme: "darkly" # ttkbootstrap theme
+  auto_advance_delay: 0.55 # seconds to auto-advance between lines in a block (0 = require NEXT per line)
+  thinking_delay_ms: 350 # ms before Bucko starts responding after user input
 
 mood:
   baseline:
@@ -13,8 +15,8 @@ mood:
     patience: 80
     chaos: 40
     warmth: 75
-  decay_rate: 1                # units per minute back toward baseline
+  decay_rate: 1 # units per minute back toward baseline
 
 discord_rpc:
   enabled: true
-  app_id: "1234567890123456789"  # placeholder
+  app_id: "1492519409343004763" # placeholder

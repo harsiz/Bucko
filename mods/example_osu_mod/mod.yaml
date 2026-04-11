@@ -1,10 +1,10 @@
-name: "Example osu! Mod"
+name: "osu! Mod"
 id: "example_osu_mod"
-mod_version: 1
+mod_version: 2
 version_support: [1]
-description: "Example mod adding osu! specific dialogue. Use as a template."
+description: "osu! dialogue — ranks, maps, modes, plays, tilt. Use as a template for your own mods."
 author: "harsiz"
 
 console_commands:
   - name: "stats"
-    description: "Show tracked osu! interest stats"
+    description: "Show tracked osu! interest data"

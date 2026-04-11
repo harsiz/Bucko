@@ -73,6 +73,10 @@ DEFAULT_NEXT_LABEL = _cfg.get("ui", {}).get("default_next_label", "NEXT")
 WINDOW_WIDTH = _cfg.get("ui", {}).get("window_width", 900)
 WINDOW_HEIGHT = _cfg.get("ui", {}).get("window_height", 650)
 THEME = _cfg.get("ui", {}).get("theme", "darkly")
+# Lines within a block auto-advance after this delay (seconds). 0 = require NEXT click per line.
+AUTO_ADVANCE_DELAY = _cfg.get("ui", {}).get("auto_advance_delay", 0.55)
+# Delay before Bucko "starts typing" after user input (ms)
+THINKING_DELAY_MS = _cfg.get("ui", {}).get("thinking_delay_ms", 350)
 MOOD_BASELINE = _cfg.get("mood", {}).get("baseline", {
     "energy": 70, "patience": 80, "chaos": 40, "warmth": 75
 })
@@ -202,6 +206,8 @@ class BuckoApp:
         self._input_capture_key = ""
         self._next_auto = False
         self._autocomplete_cache: list[tuple[str, str]] = []
+        self._typing_indicator_active = False
+        self._autosave_id = None
 
         # ── Cache warmup ───────────────────────────────────────────────────
         threading.Thread(target=self._warmup_cache, daemon=True).start()
@@ -381,6 +387,7 @@ class BuckoApp:
         ttk.Label(console_input_frame, text=">>> ", font=("Consolas", 11), foreground="#00ff88").pack(side=LEFT)
 
         self.console_var = tk.StringVar()
+        self.console_var.trace_add("write", self._on_console_input_change)
         self.console_entry = ttk.Entry(
             console_input_frame,
             textvariable=self.console_var,
@@ -389,12 +396,32 @@ class BuckoApp:
         )
         self.console_entry.pack(fill=X, side=LEFT, expand=True)
         self.console_entry.bind("<Return>", self._on_console_submit)
+        self.console_entry.bind("<Escape>", self._console_autocomplete_hide)
+        self.console_entry.bind("<Up>", self._console_up_key)
+        self.console_entry.bind("<Down>", self._console_down_key)
+
+        # Console autocomplete dropdown
+        self.console_ac_frame = ttk.Frame(self.root, relief=tk.RAISED, borderwidth=1)
+        self.console_ac_listbox = tk.Listbox(
+            self.console_ac_frame,
+            font=("Consolas", 10),
+            bg="#0a1a0a",
+            fg="#00ff88",
+            selectbackground="#003300",
+            selectforeground="#00ff88",
+            activestyle="none",
+            relief=tk.FLAT,
+            height=6,
+        )
+        self.console_ac_listbox.pack(fill=BOTH, expand=True)
+        self.console_ac_listbox.bind("<Return>", self._console_autocomplete_select)
+        self.console_ac_listbox.bind("<Double-Button-1>", self._console_autocomplete_select)
+        self._console_ac_visible = False
+        self._console_ac_data: list[str] = []
 
         # Console history
         self._console_history: list[str] = []
         self._console_history_idx = -1
-        self.console_entry.bind("<Up>", self._console_history_up)
-        self.console_entry.bind("<Down>", self._console_history_down)
 
     # ────────────────────────────────────────────────────────────────────────
     #  Session start
@@ -434,6 +461,7 @@ class BuckoApp:
         self.root.after(0, lambda: self._start_block(block))
 
     def _start_block(self, block) -> None:
+        self._hide_typing_indicator()
         self.state.reset_block_affection()
         block.last_triggered = time.time()
         self.dm.apply_mood_effect(block)
@@ -484,10 +512,13 @@ class BuckoApp:
         if self._pending_lines:
             peek = self._pending_lines[0]
             if isinstance(peek, tuple) and peek[0] in ("pause", "input_capture"):
-                # pause and input_capture don't need a NEXT click — auto-advance
+                # These never need a NEXT click
                 self._process_next_line()
+            elif AUTO_ADVANCE_DELAY > 0:
+                # Auto-advance to next line within the same block
+                self.root.after(int(AUTO_ADVANCE_DELAY * 1000), self._process_next_line)
             else:
-                # Text line — show NEXT button
+                # Manual NEXT required per line
                 self._show_next_button()
         else:
             self._on_block_complete()
@@ -607,6 +638,48 @@ class BuckoApp:
     def _append_system_line(self, text: str) -> None:
         self._append_text(f"\n{text}", tag="system")
 
+    def _show_typing_indicator(self) -> None:
+        """Show a '...' indicator while Bucko is 'thinking'."""
+        self._typing_indicator_active = True
+        self._append_text("\nBucko", tag="speaker")
+        self._append_text("\n  ", tag="bucko")
+        self._animate_typing(0)
+
+    def _animate_typing(self, frame: int) -> None:
+        if not self._typing_indicator_active:
+            return
+        dots = ["   ", ".  ", ".. ", "..."][frame % 4]
+        # Overwrite the last 3 chars with updated dots
+        self.dialogue_text.config(state=tk.NORMAL)
+        self.dialogue_text.delete("end-4c", "end")
+        self.dialogue_text.insert(tk.END, dots, "bucko")
+        self.dialogue_text.see(tk.END)
+        self.dialogue_text.config(state=tk.DISABLED)
+        if self._typing_indicator_active:
+            self._typing_anim_id = self.root.after(200, lambda: self._animate_typing(frame + 1))
+
+    def _hide_typing_indicator(self) -> None:
+        self._typing_indicator_active = False
+        if hasattr(self, "_typing_anim_id"):
+            try:
+                self.root.after_cancel(self._typing_anim_id)
+            except Exception:
+                pass
+        # Remove the "Bucko\n  ..." lines
+        self.dialogue_text.config(state=tk.NORMAL)
+        try:
+            # Find and delete from the last "Bucko" speaker label onward
+            idx = self.dialogue_text.search("Bucko", tk.END, backwards=True, stopindex="1.0")
+            if idx:
+                # Only delete if it's the typing indicator (no real content after it)
+                line_end = self.dialogue_text.index(f"{idx} lineend +1c +3l lineend")
+                snippet = self.dialogue_text.get(idx, tk.END).strip()
+                if snippet in ("Bucko", "Bucko\n  ", "Bucko\n  .", "Bucko\n  ..", "Bucko\n  ..."):
+                    self.dialogue_text.delete(idx + " -1c", tk.END)
+        except Exception:
+            pass
+        self.dialogue_text.config(state=tk.DISABLED)
+
     def _set_expression(self, name: str) -> None:
         img = self.expressions.get(name)
         if img:
@@ -676,8 +749,9 @@ class BuckoApp:
         self._awaiting_input = False
         self._disable_input()
 
-        # Match dialogue
-        self.root.after(100, lambda: self._process_input(text))
+        # Show typing indicator then process
+        self._show_typing_indicator()
+        self.root.after(THINKING_DELAY_MS, lambda: self._process_input(text))
 
     def _handle_input_capture(self, text: str) -> None:
         """Store input from input_capture dialogue lines."""
@@ -893,12 +967,32 @@ class BuckoApp:
             _log("[INFO] Full clean complete")
             return "[INFO] bucko.clean complete"
 
+        if cmd == "chat.clear":
+            self.dialogue_text.config(state=tk.NORMAL)
+            self.dialogue_text.delete(1.0, tk.END)
+            self.dialogue_text.config(state=tk.DISABLED)
+            return "[INFO] Chat cleared"
+
         if cmd == "help":
             return HELP_TEXT
 
         return self.console_sys.execute(cmd) or ""
 
-    def _console_history_up(self, event=None) -> None:
+    def _console_up_key(self, event=None) -> None:
+        if self._console_ac_visible:
+            self._console_ac_up()
+        else:
+            self._console_history_up()
+        return "break"
+
+    def _console_down_key(self, event=None) -> None:
+        if self._console_ac_visible:
+            self._console_ac_down()
+        else:
+            self._console_history_down()
+        return "break"
+
+    def _console_history_up(self) -> None:
         if not self._console_history:
             return
         self._console_history_idx = max(0, self._console_history_idx - 1
@@ -906,7 +1000,7 @@ class BuckoApp:
             else len(self._console_history) - 1)
         self.console_var.set(self._console_history[self._console_history_idx])
 
-    def _console_history_down(self, event=None) -> None:
+    def _console_history_down(self) -> None:
         if self._console_history_idx < 0:
             return
         if self._console_history_idx >= len(self._console_history) - 1:
@@ -916,17 +1010,113 @@ class BuckoApp:
             self._console_history_idx += 1
             self.console_var.set(self._console_history[self._console_history_idx])
 
+    # ── Console autocomplete ──────────────────────────────────────────────────
+
+    def _on_console_input_change(self, *args) -> None:
+        text = self.console_var.get().strip().lower()
+        if not text:
+            self._console_autocomplete_hide()
+            return
+        matches = [(cmd, desc) for cmd, desc in CONSOLE_COMMANDS if text in cmd.lower()][:8]
+        if matches:
+            self._console_autocomplete_show(matches)
+        else:
+            self._console_autocomplete_hide()
+
+    def _console_autocomplete_show(self, matches: list[tuple[str, str]]) -> None:
+        self.console_ac_listbox.delete(0, tk.END)
+        for cmd, desc in matches:
+            self.console_ac_listbox.insert(tk.END, f"  {cmd}   — {desc}")
+        self._console_ac_data = [cmd for cmd, _ in matches]
+
+        x = self.console_entry.winfo_rootx() - self.root.winfo_rootx()
+        y = self.console_entry.winfo_rooty() - self.root.winfo_rooty()
+        w = self.console_entry.winfo_width() + 60  # label width
+        h = min(len(matches), 6) * 22 + 4
+
+        self.console_ac_frame.place(x=x, y=y - h, width=w, height=h)
+        self.console_ac_frame.lift()
+        self._console_ac_visible = True
+
+    def _console_autocomplete_hide(self, event=None) -> None:
+        self.console_ac_frame.place_forget()
+        self._console_ac_visible = False
+
+    def _console_ac_up(self) -> None:
+        cur = self.console_ac_listbox.curselection()
+        idx = max(0, cur[0] - 1) if cur else self.console_ac_listbox.size() - 1
+        self.console_ac_listbox.selection_clear(0, tk.END)
+        self.console_ac_listbox.selection_set(idx)
+
+    def _console_ac_down(self) -> None:
+        cur = self.console_ac_listbox.curselection()
+        idx = min(self.console_ac_listbox.size() - 1, cur[0] + 1) if cur else 0
+        self.console_ac_listbox.selection_clear(0, tk.END)
+        self.console_ac_listbox.selection_set(idx)
+
+    def _console_autocomplete_select(self, event=None) -> None:
+        cur = self.console_ac_listbox.curselection()
+        if cur and cur[0] < len(self._console_ac_data):
+            self.console_var.set(self._console_ac_data[cur[0]])
+            self._console_autocomplete_hide()
+            self.console_entry.focus_set()
+            self.console_entry.icursor(tk.END)
+
     # ────────────────────────────────────────────────────────────────────────
     #  App control callbacks
     # ────────────────────────────────────────────────────────────────────────
 
     def _restart(self) -> None:
-        self._save_and_close()
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        self._do_shutdown(restart=True)
 
     def _quit(self) -> None:
-        self._save_and_close()
-        self.root.quit()
+        self._do_shutdown(restart=False)
+
+    def _do_shutdown(self, restart: bool = False) -> None:
+        """Graceful shutdown — save, log, then destroy."""
+        # Remove log listener so we don't write to closed file
+        if self._on_log_line in _log_listeners:
+            _log_listeners.remove(self._on_log_line)
+
+        # Cancel pending timers
+        if self._autosave_id:
+            try:
+                self.root.after_cancel(self._autosave_id)
+            except Exception:
+                pass
+        self._hide_typing_indicator()
+
+        # Show console message
+        self._append_console("\n[INFO] Backing up data...")
+
+        # Save
+        try:
+            write_save(self.state.to_save_dict())
+            self._append_console("[INFO] Save complete.")
+        except Exception as e:
+            self._append_console(f"[ERROR] Save failed: {e}")
+
+        # Disconnect Discord
+        if self.discord:
+            try:
+                self.discord.disconnect()
+            except Exception:
+                pass
+
+        # Write final log line and close file
+        try:
+            _log_file.write(f"[{time.strftime('%H:%M:%S')}] [INFO] Session ended\n")
+            _log_file.flush()
+            _log_file.close()
+        except Exception:
+            pass
+
+        if restart:
+            self.root.destroy()
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            # Brief pause so the console message is readable, then destroy
+            self.root.after(800, self.root.destroy)
 
     def _reload_config(self) -> None:
         global _cfg, TYPEWRITER_SPEED, DEFAULT_NEXT_LABEL
@@ -963,15 +1153,12 @@ class BuckoApp:
         except OSError as e:
             _log(f"[ERROR] Export failed: {e}")
 
-    def _save_and_close(self) -> None:
+    def _save_quietly(self) -> None:
+        """Silent background save (no log file close)."""
         try:
             write_save(self.state.to_save_dict())
-            _log("[INFO] Game saved")
         except Exception as e:
-            _log(f"[ERROR] Save failed: {e}")
-        if self.discord:
-            self.discord.disconnect()
-        _log_file.close()
+            _log(f"[ERROR] Autosave failed: {e}")
 
     # ────────────────────────────────────────────────────────────────────────
     #  Background tasks
@@ -987,13 +1174,51 @@ class BuckoApp:
             self.discord.connect()
 
     # ────────────────────────────────────────────────────────────────────────
-    #  Periodic save + auto-save
+    #  Periodic autosave
     # ────────────────────────────────────────────────────────────────────────
 
     def _schedule_autosave(self) -> None:
-        self._save_and_close()
-        self.root.after(60_000, self._schedule_autosave)  # every 60s
+        self._save_quietly()
+        self._autosave_id = self.root.after(60_000, self._schedule_autosave)
 
+
+# ── Console commands list (for autocomplete) ──────────────────────────────────
+CONSOLE_COMMANDS: list[tuple[str, str]] = [
+    ("client.version",           "Show client version"),
+    ("client.restart",           "Restart the app"),
+    ("client.quit",              "Quit the app"),
+    ("client.config.reload",     "Reload client_config.yaml"),
+    ("client.config.validate",   "Validate config files"),
+    ("cache.clean",              "Clear in-memory cache"),
+    ("chat.clear",               "Clear the chat display (keeps all data)"),
+    ("logs.clean",               "Clear console log output"),
+    ("logs.export",              "Export logs to a file"),
+    ("mod.list",                 "List all loaded mods"),
+    ("mod.install",              "Install a mod from path/url"),
+    ("mod.uninstall",            "Uninstall a mod by id"),
+    ("mod.reload",               "Reload a mod by id"),
+    ("mod.info",                 "Show mod info by id"),
+    ("mod.validate",             "Validate a mod by id"),
+    ("mod.enable",               "Enable a mod by id"),
+    ("mod.disable",              "Disable a mod by id"),
+    ("dialogue.list",            "List all loaded dialogue blocks"),
+    ("dialogue.search",          "Search dialogue blocks by query"),
+    ("dialogue.trigger",         "Manually trigger a dialogue block"),
+    ("dialogue.reload",          "Reload all dialogue files"),
+    ("dialogue.clean",           "Clean dialogue cache"),
+    ("memory.dump",              "Dump all memory values"),
+    ("memory.get",               "Get a memory value by path"),
+    ("memory.clear",             "Clear a memory namespace (asks confirmation)"),
+    ("memory.clean",             "Clean all non-essential memory"),
+    ("bucko.affection",          "Show affection value"),
+    ("bucko.clean",              "Run cache + logs + memory clean"),
+    ("debug.mood",               "Show current mood values"),
+    ("debug.interest",           "Show interest vector for a topic"),
+    ("debug.hash.verify",        "Verify all memory entry hashes"),
+    ("debug.triggers.list",      "List all loaded trigger labels"),
+    ("debug.triggers.search",    "Search trigger labels"),
+    ("help",                     "Show all commands"),
+]
 
 # ── Help text ─────────────────────────────────────────────────────────────────
 HELP_TEXT = """
@@ -1002,7 +1227,7 @@ Bucko Console Commands
 client.version         client.restart        client.quit
 client.config.reload   client.config.validate
 
-cache.clean
+cache.clean            chat.clear
 
 logs.clean             logs.export [path]
 
@@ -1032,10 +1257,9 @@ def main():
     root = ttk.Window(themename=THEME)
     app = BuckoApp(root)
 
-    # Autosave
-    root.after(60_000, app._schedule_autosave)
+    # Autosave — track ID so it can be cancelled on quit
+    app._autosave_id = root.after(60_000, app._schedule_autosave)
 
-    # Save on close
     root.protocol("WM_DELETE_WINDOW", app._quit)
 
     root.mainloop()
