@@ -5,10 +5,10 @@ dialogues:
   - dialogue_id: "osu_ask"
     triggers:
       - keywords: ["osu", "osu!", "osu game"]
-      priority: 8
+    priority: 8
     lines:
       - "osu! detected"
-      - "{{if interest['osu!'].frequency > 10}} you bring this up a lot — you main it? {{elif interest['osu!'].frequency > 3}} you seem into it {{else}} first time mentioning osu around me {{endif}}"
+      - "{{if interest['osu!'].frequency > 10}}you bring this up a lot — you main it?{{elif interest['osu!'].frequency > 3}}you seem into it{{else}}first time mentioning osu around me{{endif}}"
     mood_effect:
       energy: +8
       chaos: +5
@@ -17,7 +17,7 @@ dialogues:
     triggers:
       - keywords: ["osu rank", "osu pp", "performance points", "pp farming"]
       - exact: "what rank are you in osu"
-      priority: 9
+    priority: 9
     lines:
       - "i'm a config file so technically unranked"
       - "but if i played i'd be farming pp like it's my job"
@@ -28,17 +28,17 @@ dialogues:
   - dialogue_id: "osu_map"
     triggers:
       - keywords: ["osu map", "beatmap", "fc", "full combo", "stream maps", "jump maps"]
-      priority: 8
+    priority: 8
     lines:
       - "{{choice.cycle: ['FC? we celebrating?', 'what diff are you playing', 'stream player or jumper']}}"
-      - "{{if interest['osu!'].depth > 200}} you've been at this a while huh {{endif}}"
+      - "{{if interest['osu!'].depth > 200}}you've been at this a while huh{{endif}}"
     mood_effect:
       energy: +10
 
   - dialogue_id: "osu_score"
     triggers:
       - keywords: ["i got a new top play", "new top", "new score", "pb on osu"]
-      priority: 10
+    priority: 10
     lines:
       - "let's go"
       - pause: 0.8
@@ -51,7 +51,7 @@ dialogues:
   - dialogue_id: "osu_rant"
     triggers:
       - keywords: ["osu is frustrating", "hate osu", "osu tilted", "miss on osu", "choked osu"]
-      priority: 10
+    priority: 10
     lines:
       - "the choke is part of the experience tbh"
       - "{{wait: 0.8}}skill issue? probably. but also just the game being the game."
@@ -62,7 +62,7 @@ dialogues:
   - dialogue_id: "osu_stats_read"
     triggers:
       - keywords: ["how much osu", "how often osu", "osu frequency"]
-      priority: 9
+    priority: 9
     lines:
       - "you've brought up osu {{interest['osu!'].frequency}} times"
-      - "{{if interest['osu!'].sentiment > 0.5}} clearly you love it {{elif interest['osu!'].sentiment < -0.2}} love-hate relationship vibes {{else}} somewhere in the middle {{endif}}"
+      - "{{if interest['osu!'].sentiment > 0.5}}clearly you love it{{elif interest['osu!'].sentiment < -0.2}}love-hate relationship vibes{{else}}somewhere in the middle{{endif}}"

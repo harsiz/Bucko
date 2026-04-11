@@ -30,21 +30,20 @@ dialogues:
 
   - dialogue_id: "name_confirm"
     lines:
-      - "{{dep: setup.yaml | user.name}}. aight. i'll remember that."
-      - "{{if memory.global.times_talked > 0}}actually wait i already know you lmao{{endif}}"
+      - "{{memory.user.name}}. aight. i'll remember that."
       - "ok so. what do you wanna talk about?"
 
   - dialogue_id: "name_change"
     triggers:
       - keywords: ["change my name", "call me", "my name is", "rename"]
-      priority: 5
+    priority: 5
     lines:
       - "changing your name? what do you want me to call you now?"
     next: "name_input"
     on_repeat:
       threshold: 3
       escalate:
-        - "bro you've changed your name {{memory.repeat['setup::name_change'].count}} times now 💀"
+        - "bro you've changed your name {{memory.repeat['setup::name_change'].count}} times now"
         - "i'm calling you 'indecisive' from now on actually"
       max_escalations: 2
       cooldown: 120
@@ -52,7 +51,7 @@ dialogues:
 
   - dialogue_id: "returning_user"
     lines:
-      - "ayo {{dep: setup.yaml | user.name}}, you're back."
+      - "ayo {{memory.user.name}}, you're back."
       - "session #{{counter.get: 'times_talked'}} let's go"
     mood_effect:
       warmth: +5

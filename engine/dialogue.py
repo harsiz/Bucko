@@ -26,18 +26,11 @@ class DialogueBlock:
         self.hash_id: str = _ns_hash(self.full_id) if self.full_id else ""
 
         self.triggers: list[dict] = data.get("triggers", [])
-        self.priority: int = 0
+        # priority, condition, cooldown are block-level fields (not inside triggers list)
+        self.priority: int = int(data.get("priority", 0))
         self.trigger_condition: str = data.get("condition", "")
-        self.cooldown_sec: int = 0
+        self.cooldown_sec: int = int(data.get("cooldown", 0))
         self.last_triggered: float = 0.0
-
-        # Parse triggers list
-        for t in self.triggers:
-            if isinstance(t, dict):
-                if "priority" in t:
-                    self.priority = int(t["priority"])
-                if "cooldown" in t:
-                    self.cooldown_sec = int(t["cooldown"])
 
         self.mood_condition: str = data.get("mood_condition", "")
         self.lines: list = data.get("lines", [])
