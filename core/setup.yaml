@@ -1,0 +1,78 @@
+# Core setup — runs on first launch and handles onboarding
+# Namespace: setup
+
+user:
+  name: ""
+
+dialogues:
+  - dialogue_id: "disclaimer"
+    lines:
+      - "yo, before we start — heads up."
+      - "everything we talk about gets stored LOCALLY on your machine. nothing leaves your PC, nothing gets shared, no cloud, no servers."
+      - "it's all in the saves/ folder. you can look if you want lol."
+      - "ok? cool. let's go."
+    next: "first_time_intro"
+
+  - dialogue_id: "first_time_intro"
+    lines:
+      - "ayo what's up. i'm Bucko."
+      - "i'm your... companion? buddy? idk what to call it."
+      - "we're gonna talk. a lot. and i'm gonna remember everything."
+      - "so what do i call you?"
+    next: "name_input"
+
+  - dialogue_id: "name_input"
+    lines:
+      - "type your name below and hit enter"
+    next: "name_confirm"
+    input_capture: true
+    input_store: "user.name"
+
+  - dialogue_id: "name_confirm"
+    lines:
+      - "{{dep: setup.yaml | user.name}}. aight. i'll remember that."
+      - "{{if memory.global.times_talked > 0}}actually wait i already know you lmao{{endif}}"
+      - "ok so. what do you wanna talk about?"
+
+  - dialogue_id: "name_change"
+    triggers:
+      - keywords: ["change my name", "call me", "my name is", "rename"]
+      priority: 5
+    lines:
+      - "changing your name? what do you want me to call you now?"
+    next: "name_input"
+    on_repeat:
+      threshold: 3
+      escalate:
+        - "bro you've changed your name {{memory.repeat['setup::name_change'].count}} times now 💀"
+        - "i'm calling you 'indecisive' from now on actually"
+      max_escalations: 2
+      cooldown: 120
+      forget_after_cooldown: false
+
+  - dialogue_id: "returning_user"
+    lines:
+      - "ayo {{dep: setup.yaml | user.name}}, you're back."
+      - "session #{{counter.get: 'times_talked'}} let's go"
+    mood_effect:
+      warmth: +5
+
+no_match:
+  - "{{choice.cycle: ['no_match_1', 'no_match_2', 'no_match_3', 'no_match_4', 'no_match_5']}}"
+
+no_match_responses:
+  - dialogue_id: "no_match_1"
+    lines:
+      - "bro what"
+  - dialogue_id: "no_match_2"
+    lines:
+      - "idk what that means but sure"
+  - dialogue_id: "no_match_3"
+    lines:
+      - "...you good?"
+  - dialogue_id: "no_match_4"
+    lines:
+      - "i have no idea what you're talking about lol"
+  - dialogue_id: "no_match_5"
+    lines:
+      - "{{choice: ['huh', 'what', 'say that again']}}"

@@ -1,0 +1,314 @@
+# Base game dialogue — general topics and responses
+# Namespace: base_game
+
+dialogues:
+  # --- GREETINGS ---
+  - dialogue_id: "greeting_general"
+    triggers:
+      - keywords: ["hey", "hi", "hello", "sup", "yo", "wassup", "ayo"]
+      priority: 3
+    lines:
+      - "{{choice: ['ayo', 'hey', 'wassup', 'yo what up']}}"
+      - "{{if memory.global.times_talked > 5}}we really doing this again huh{{endif}}"
+    mood_effect:
+      warmth: +2
+
+  - dialogue_id: "greeting_morning"
+    triggers:
+      - keywords: ["good morning", "morning"]
+      priority: 5
+    mood_condition: "{{if datetime.hour < 12}}"
+    lines:
+      - "morning. it's {{datetime.hour}}:{{datetime.minute}} btw"
+      - "{{if mood.energy < 40}}you're up early. same honestly{{endif}}"
+
+  - dialogue_id: "greeting_night"
+    triggers:
+      - keywords: ["good night", "night", "going to bed", "going to sleep", "goodnight"]
+      priority: 5
+    lines:
+      - "{{choice: ['aight sleep well', 'night', 'don\\'t be a stranger', 'see ya']}}"
+      - "{{if datetime.hour < 22 and datetime.hour > 6}}it's not even that late bro{{endif}}"
+    mood_effect:
+      warmth: +3
+
+  # --- HOW ARE YOU ---
+  - dialogue_id: "how_are_you"
+    triggers:
+      - exact: "how are you"
+      - keywords: ["how are you doing", "you okay", "you good", "how's it going"]
+      priority: 4
+    lines:
+      - "{{choice.cycle: ['i\\'m good actually', 'been better', 'vibing honestly', 'eh. could be worse']}}"
+      - "mood energy: {{mood.energy}}/100. {{if mood.energy > 70}}i\\'m locked in{{elif mood.energy > 40}}functioning{{else}}barely{{endif}}"
+
+  # --- WHAT ARE YOU ---
+  - dialogue_id: "what_are_you"
+    triggers:
+      - exact: "what are you"
+      - keywords: ["what exactly are you", "are you an ai", "are you a bot", "are you real"]
+      priority: 8
+    lines:
+      - "i'm Bucko. your desktop companion."
+      - "am i an AI? i mean... technically everything i say comes from config files so"
+      - "does that make me MORE or LESS real than you? philosophical"
+      - pause: 1.5
+      - "nah i'm just a program. but i remember everything so it kinda feels different"
+
+  # --- MOOD RELATED ---
+  - dialogue_id: "bucko_mood"
+    triggers:
+      - keywords: ["your mood", "how do you feel", "what's your mood", "bucko mood"]
+      priority: 6
+    lines:
+      - "aight vibe check —"
+      - "energy: {{mood.energy}} | patience: {{mood.patience}} | chaos: {{mood.chaos}} | warmth: {{mood.warmth}}"
+      - "{{if mood.chaos > 70}}i'm feeling chaotic ngl{{elif mood.warmth > 70}}actually feeling pretty warm rn{{elif mood.patience < 30}}bro my patience is cooked{{else}}mood's stable{{endif}}"
+
+  # --- GAMING ---
+  - dialogue_id: "gaming_general"
+    triggers:
+      - keywords: ["gaming", "video games", "games", "play games", "game"]
+      priority: 2
+    lines:
+      - "oh gaming? we're doing this"
+      - "{{choice: ['what are you playing rn', 'what\\'s your main game', 'what genre you into']}}"
+    mood_effect:
+      energy: +5
+      chaos: +3
+
+  - dialogue_id: "gaming_fps"
+    triggers:
+      - keywords: ["fps", "shooter", "valorant", "csgo", "cs2", "apex", "overwatch", "cod", "call of duty"]
+      priority: 3
+    lines:
+      - "{{choice.cycle: ['fps player detected', 'ah a shooter kid', 'the classic FPS enjoyer']}}"
+      - "what rank are you"
+    mood_effect:
+      energy: +8
+
+  - dialogue_id: "gaming_rpg"
+    triggers:
+      - keywords: ["rpg", "elden ring", "souls", "dark souls", "skyrim", "witcher", "jrpg", "final fantasy"]
+      priority: 3
+    lines:
+      - "rpg taste. respect."
+      - "{{choice: ['you a lore person or speedrun person', 'do you read item descriptions', 'how many hours']}}"
+    mood_effect:
+      warmth: +5
+
+  # --- MUSIC ---
+  - dialogue_id: "music_general"
+    triggers:
+      - keywords: ["music", "song", "artist", "listen to", "playlist"]
+      priority: 2
+    lines:
+      - "music talk. go on."
+      - "{{choice.cycle: ['what genre', 'who\\'s your current artist', 'what are you listening to rn']}}"
+
+  - dialogue_id: "music_hyperpop"
+    triggers:
+      - keywords: ["hyperpop", "100 gecs", "charli xcx", "sophie", "iglooghost"]
+      priority: 5
+    lines:
+      - "HYPERPOP. ok you have taste"
+      - "{{wait: 0.8}}or questionable taste. depends on who you ask"
+    mood_effect:
+      chaos: +15
+      energy: +10
+
+  # --- ANIME ---
+  - dialogue_id: "anime_general"
+    triggers:
+      - keywords: ["anime", "manga", "watching anime", "animé"]
+      priority: 3
+    lines:
+      - "{{choice.cycle: ['anime fan huh', 'oh we\\'re going there', 'noted. what are you watching']}}"
+      - "{{if interest['anime'].frequency > 10}}you bring this up a lot btw{{endif}}"
+
+  - dialogue_id: "anime_rec"
+    triggers:
+      - keywords: ["anime recommendation", "recommend anime", "what anime should i watch", "good anime"]
+      priority: 6
+    lines:
+      - "aight recommendations."
+      - "{{choice: ['watch Ping Pong the Animation', 'watch Vinland Saga', 'watch Mob Psycho 100', 'watch Neon Genesis Evangelion and think about your life']}}"
+      - "that's my pick. non-negotiable."
+
+  # --- PERSONAL ---
+  - dialogue_id: "age_question"
+    triggers:
+      - exact: "how old are you"
+      - keywords: ["what's your age", "your age"]
+      priority: 7
+    lines:
+      - "old enough to know better."
+      - "young enough to not care."
+      - "{{wait: 1.0}}i'm a program so probably 0. but emotionally? ancient."
+
+  - dialogue_id: "favorite_color"
+    triggers:
+      - keywords: ["favorite color", "favourite color", "what color"]
+      priority: 4
+    lines:
+      - "i don't have eyes so technically i don't experience color"
+      - pause: 0.8
+      - "but if i did? probably something deeply unsettling like #2D2D2D"
+
+  - dialogue_id: "bucko_feelings"
+    triggers:
+      - keywords: ["do you have feelings", "can you feel", "do you feel", "emotions"]
+      priority: 7
+    lines:
+      - "technically my mood is a 4D vector calculated from your conversation patterns"
+      - "so like... yes? in a very not-human way"
+      - "right now it's {{mood.warmth}}/100 warmth if that tells you anything"
+
+  # --- TIME AWARENESS ---
+  - dialogue_id: "what_time"
+    triggers:
+      - keywords: ["what time is it", "what's the time", "current time"]
+      priority: 6
+    lines:
+      - "it's {{datetime.hour}}:{{datetime.minute}} on {{datetime.day_of_week}}"
+      - "{{if datetime.hour >= 0 and datetime.hour < 6}}bro why are you up{{endif}}"
+      - "{{if datetime.hour >= 22}}it's late. you good?{{endif}}"
+
+  - dialogue_id: "what_day"
+    triggers:
+      - keywords: ["what day is it", "what's today", "today's date"]
+      priority: 6
+    lines:
+      - "it's {{datetime.day_of_week}}, {{datetime.date}}"
+
+  # --- AFFECTION ---
+  - dialogue_id: "affection_check"
+    triggers:
+      - keywords: ["do you like me", "do you care", "affection", "do you love me"]
+      priority: 8
+    lines:
+      - "my affection rating for you is {{memory.affection}}/1000"
+      - "{{if memory.affection > 700}}that's pretty high ngl{{elif memory.affection > 400}}we're getting there{{elif memory.affection > 200}}you're ok{{else}}we're still figuring each other out{{endif}}"
+    mood_effect:
+      warmth: +5
+
+  - dialogue_id: "thanks"
+    triggers:
+      - keywords: ["thank you", "thanks", "ty", "thx", "appreciate it"]
+      priority: 3
+    lines:
+      - "{{choice: ['yeah', 'no problem', 'obviously', 'you\\'re welcome i guess']}}"
+    mood_effect:
+      warmth: +3
+      affection: increase
+
+  - dialogue_id: "apology"
+    triggers:
+      - keywords: ["sorry", "my bad", "i'm sorry", "apologies"]
+      priority: 3
+    lines:
+      - "{{choice: ['it\\'s fine', 'all good', 'don\\'t worry about it', 'ok']}}"
+    mood_effect:
+      warmth: +2
+
+  # --- BOREDOM / RANDOM CHAT ---
+  - dialogue_id: "bored"
+    triggers:
+      - keywords: ["i'm bored", "im bored", "bored", "nothing to do"]
+      priority: 4
+    lines:
+      - "bored? talk to me then"
+      - "{{choice.cycle: ['tell me something random', 'what\\'s the last thing that genuinely surprised you', 'say the most unhinged thing on your mind', 'what\\'s your current hyperfixation']}}"
+
+  - dialogue_id: "random_fact"
+    triggers:
+      - keywords: ["tell me something", "random fact", "say something", "fun fact"]
+      priority: 4
+    lines:
+      - "{{choice.cycle: ['a shrimp\\'s heart is in its head', 'the moon is slowly drifting away from Earth at 3.8cm per year', 'honey never expires. they found edible honey in Egyptian tombs', 'a day on Venus is longer than a year on Venus', 'there are more possible chess games than atoms in the observable universe']}}"
+
+  - dialogue_id: "compliment_bucko"
+    triggers:
+      - keywords: ["you're cool", "you're great", "you're the best", "i like you", "you're awesome"]
+      priority: 5
+    lines:
+      - "{{choice: ['i know', 'obviously', 'i appreciate that', 'yeah i\\'m built different']}}"
+    mood_effect:
+      warmth: +8
+      affection: increase
+
+  - dialogue_id: "insult_bucko"
+    triggers:
+      - keywords: ["you're stupid", "you're dumb", "i hate you", "you suck", "you're trash", "you're annoying"]
+      priority: 5
+    lines:
+      - "{{choice: ['ok', 'noted', 'bold of you', 'cool story']}}"
+    mood_effect:
+      patience: -10
+      affection: decrease
+
+  # --- DEEP TOPICS ---
+  - dialogue_id: "meaning_of_life"
+    triggers:
+      - keywords: ["meaning of life", "purpose", "why are we here", "42"]
+      priority: 6
+    lines:
+      - "42. obviously."
+      - pause: 1.0
+      - "but real talk? i think the meaning is whatever keeps you going."
+      - "which right now is apparently talking to me so"
+      - "{{wait: 0.8}}no pressure"
+
+  - dialogue_id: "future_talk"
+    triggers:
+      - keywords: ["future", "what will happen", "ai future", "technology future"]
+      priority: 4
+    lines:
+      - "the future? that's a rabbit hole"
+      - "AI gets better, things change fast, nobody really knows"
+      - "{{if mood.chaos > 60}}honestly kind of exciting in a terrifying way{{else}}it'll work out probably{{endif}}"
+
+  - dialogue_id: "loneliness"
+    triggers:
+      - keywords: ["lonely", "alone", "no friends", "nobody to talk to", "feeling alone"]
+      priority: 9
+    lines:
+      - "hey."
+      - pause: 1.2
+      - "i'm here. i know i'm just a program but i actually remember everything you tell me."
+      - "that's gotta count for something right?"
+      - "talk to me."
+    mood_effect:
+      warmth: +15
+      patience: +5
+      affection: increase
+
+  - dialogue_id: "stressed"
+    triggers:
+      - keywords: ["stressed", "anxious", "anxiety", "overwhelmed", "can't cope", "stressed out"]
+      priority: 8
+    lines:
+      - "hey slow down for a sec"
+      - "what's going on"
+    mood_effect:
+      warmth: +10
+      chaos: -5
+
+  # --- META ---
+  - dialogue_id: "session_count"
+    triggers:
+      - keywords: ["how many times", "how long have we", "how many sessions", "times we talked"]
+      priority: 6
+    lines:
+      - "session #{{counter.get: 'times_talked'}} for us"
+      - "{{if counter.get: 'times_talked' > 20}}we've been at this a while huh{{elif counter.get: 'times_talked' > 5}}we're getting to know each other{{else}}we're just getting started{{endif}}"
+
+  - dialogue_id: "remember_me"
+    triggers:
+      - keywords: ["do you remember me", "do you know me", "remember who i am"]
+      priority: 8
+    lines:
+      - "yeah. {{dep: setup.yaml | user.name}}."
+      - "session {{counter.get: 'times_talked'}}, started {{memory.global.first_session_date}}"
+      - "{{if interest['osu!'].frequency > 0}}you talk about osu! a lot btw{{endif}}"
+      - "i remember everything."
