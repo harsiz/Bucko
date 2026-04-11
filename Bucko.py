@@ -694,15 +694,17 @@ class BuckoApp:
         self._append_text(f"\n{text}", tag="system")
 
     def _show_typing_indicator(self) -> None:
-        """Show an animated '...' indicator. Uses a text mark for clean removal."""
+        """Show an animated '...' indicator. Line-number based for clean removal."""
         if self._typing_indicator_active:
             return  # already showing
         self._typing_indicator_active = True
         self.dialogue_text.config(state=tk.NORMAL)
+        # Record the last content line BEFORE inserting anything.
+        # "end" always returns "{N}.0" where N includes the implicit trailing line,
+        # so (N-1) is the last visible content line.
+        n = int(self.dialogue_text.index("end").split(".")[0])
+        self._typing_indicator_line = max(1, n - 1)
         self.dialogue_text.insert(tk.END, "\n", "")
-        # Set mark HERE — everything from this point onward is the indicator
-        self.dialogue_text.mark_set("typing_start", tk.END)
-        self.dialogue_text.mark_gravity("typing_start", tk.LEFT)
         self.dialogue_text.insert(tk.END, "Bucko", "speaker")
         self.dialogue_text.insert(tk.END, "\n  ", "bucko")
         self.dialogue_text.insert(tk.END, "   ", "bucko")  # placeholder for dots
@@ -731,12 +733,14 @@ class BuckoApp:
                 self.root.after_cancel(self._typing_anim_id)
             except Exception:
                 pass
-        # Delete precisely using the mark — no fragile text searching
+        # Delete from the end of the stored line to widget END.
+        # "{line}.end" in Tkinter = the '\n' delimiter at the end of that line,
+        # which is exactly the '\n' separator we inserted to start the indicator.
+        # Deleting from there to END removes the indicator completely.
         self.dialogue_text.config(state=tk.NORMAL)
         try:
-            start = self.dialogue_text.index("typing_start")
-            self.dialogue_text.delete(f"{start} -1c", tk.END)
-            self.dialogue_text.mark_unset("typing_start")
+            line = getattr(self, "_typing_indicator_line", 1)
+            self.dialogue_text.delete(f"{line}.end", tk.END)
         except Exception:
             pass
         self.dialogue_text.config(state=tk.DISABLED)
