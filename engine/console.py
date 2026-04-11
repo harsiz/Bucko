@@ -20,6 +20,7 @@ class ConsoleSystem:
         cache: "ConfigCache",
         log: Callable[[str], None],
         client_version: int,
+        app_version: str = "0.0.0",
         app_callbacks: dict = None,
     ):
         self.state = state
@@ -28,6 +29,7 @@ class ConsoleSystem:
         self.cache = cache
         self.log = log
         self.client_version = client_version
+        self.app_version = app_version
         self.app = app_callbacks or {}  # restart, quit, reload callbacks
 
     def execute(self, raw: str) -> Optional[str]:
@@ -42,7 +44,22 @@ class ConsoleSystem:
 
         # ---- client ----
         if cmd == "client.version":
-            return f"Bucko client v{self.client_version}"
+            return f"Bucko v{self.app_version}  (client schema v{self.client_version})"
+
+        if cmd == "client.update.check":
+            if cb := self.app.get("update_check"):
+                cb()
+            return "[INFO] Checking for updates..."
+
+        if cmd == "client.update":
+            if cb := self.app.get("update_engine"):
+                cb()
+            return "[INFO] Starting update... see console log for progress"
+
+        if cmd == "client.update.content":
+            if cb := self.app.get("update_content"):
+                cb()
+            return "[INFO] Starting content update... see console log for progress"
 
         if cmd == "client.restart":
             if cb := self.app.get("restart"):

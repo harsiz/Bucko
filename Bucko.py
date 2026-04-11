@@ -29,6 +29,10 @@ from engine.mods import ModManager
 from engine.cache import ConfigCache
 from engine.console import ConsoleSystem
 from engine.discord_rpc import DiscordRPC
+from engine import updater as _updater
+
+# ── Version ────────────────────────────────────────────────────────────────────
+APP_VERSION = "2.0.0"   # Baked into EXE by PyInstaller. Never read from config.
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 CORE_DIR = ROOT / "core"
@@ -175,6 +179,7 @@ class BuckoApp:
             cache=_cache,
             log=_log,
             client_version=CLIENT_VERSION,
+            app_version=APP_VERSION,
             app_callbacks={
                 "restart": self._restart,
                 "quit": self._quit,
@@ -184,6 +189,9 @@ class BuckoApp:
                 "logs_export": self._logs_export,
                 "trigger_dialogue": self._trigger_dialogue_from_console,
                 "install_mod": self._install_mod_async,
+                "update_check":   self._update_check_async,
+                "update_engine":  self._update_engine_async,
+                "update_content": self._update_content_async,
             }
         )
 
@@ -1277,8 +1285,123 @@ class BuckoApp:
         """Run mod installation in a background thread to keep the GUI responsive."""
         def _worker():
             ok, msg = self.mm.install_mod(source, self.dm)
-            # Schedule the log output back on the main thread so Tkinter is happy
             self.root.after(0, lambda: _log(msg))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    # ── Update callbacks ──────────────────────────────────────────────────────
+
+    def _update_check_async(self) -> None:
+        """Check GitHub for a newer version and report to console."""
+        def _worker():
+            if not _updater.acquire_update_lock():
+                self.root.after(0, lambda: _log("[WARN] An update operation is already running"))
+                return
+            try:
+                info = _updater.fetch_release_info(APP_VERSION)
+                def _done():
+                    if info.is_newer:
+                        _log(f"[UPDATE] New version available: {info.tag} — {info.name}")
+                        if info.notes:
+                            for line in info.notes.splitlines()[:6]:
+                                _log(f"  {line}")
+                        _log(f"  Run 'client.update' to download and apply")
+                        _log(f"  Release page: {info.release_url}")
+                    else:
+                        _log(f"[INFO] You are up to date (v{APP_VERSION})")
+                self.root.after(0, _done)
+            except _updater.UpdateError as e:
+                self.root.after(0, lambda: _log(f"[ERROR] Update check failed: {e}"))
+            finally:
+                _updater.release_update_lock()
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _update_engine_async(self) -> None:
+        """Download and apply a full engine update (new EXE or git pull)."""
+        def _worker():
+            if not _updater.acquire_update_lock():
+                self.root.after(0, lambda: _log("[WARN] An update operation is already running"))
+                return
+            try:
+                self.root.after(0, lambda: _log("[INFO] Checking latest release..."))
+                info = _updater.fetch_release_info(APP_VERSION)
+
+                if not info.is_newer:
+                    self.root.after(0, lambda: _log(f"[INFO] Already on latest version (v{APP_VERSION})"))
+                    return
+
+                self.root.after(0, lambda: _log(f"[INFO] Found v{info.tag} — downloading..."))
+
+                if _updater.IS_FROZEN:
+                    # Running as EXE — download new EXE then hand off to .bat
+                    if not info.exe_url:
+                        self.root.after(0, lambda: _log(
+                            "[ERROR] No Bucko.exe asset found in this release.\n"
+                            f"  Download manually: {info.release_url}"
+                        ))
+                        return
+
+                    import sys as _sys
+                    current_exe = Path(_sys.executable)
+                    new_exe = current_exe.parent / "Bucko_update.exe"
+                    new_exe.unlink(missing_ok=True)  # clean up stale partial download
+
+                    last_pct = [-1]
+                    def _progress(downloaded, total):
+                        if not total:
+                            return
+                        pct = int(downloaded / total * 100)
+                        if pct // 10 != last_pct[0] // 10:
+                            last_pct[0] = pct
+                            mb = downloaded / 1_048_576
+                            self.root.after(0, lambda p=pct, m=mb: _log(f"[INFO] Downloading... {p}% ({m:.1f} MB)"))
+
+                    _updater.download_file(info.exe_url, new_exe, log=_log, progress_cb=_progress)
+                    self.root.after(0, lambda: _log("[INFO] Download complete — writing update script..."))
+                    _updater.apply_engine_update_frozen(new_exe, current_exe, _log)
+                    # Give the log message a moment to render before quitting
+                    self.root.after(1500, self._quit)
+
+                else:
+                    # Running as script — git pull or zip download
+                    _updater.apply_engine_update_script(ROOT, _log)
+
+            except _updater.UpdateError as e:
+                self.root.after(0, lambda: _log(f"[ERROR] Engine update failed: {e}"))
+            finally:
+                _updater.release_update_lock()
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _update_content_async(self) -> None:
+        """Download and hot-reload the latest core/ YAML content. No restart needed."""
+        def _worker():
+            if not _updater.acquire_update_lock():
+                self.root.after(0, lambda: _log("[WARN] An update operation is already running"))
+                return
+            zip_path = ROOT / "_content_update.zip"
+            try:
+                self.root.after(0, lambda: _log("[INFO] Checking latest release..."))
+                info = _updater.fetch_release_info(APP_VERSION)
+
+                # Prefer a dedicated core.zip asset; fall back to full source zip
+                url = info.content_url or info.zip_url
+                src = "core.zip" if info.content_url else "source zip"
+                self.root.after(0, lambda: _log(f"[INFO] Downloading {src}..."))
+
+                _updater.download_file(url, zip_path, log=_log)
+
+                count = _updater.apply_content_update(zip_path, CORE_DIR, _log)
+                zip_path.unlink(missing_ok=True)
+
+                def _reload():
+                    self._reload_dialogue()
+                    _log(f"[INFO] Content update done — {count} files updated, dialogue reloaded")
+                self.root.after(0, _reload)
+
+            except _updater.UpdateError as e:
+                zip_path.unlink(missing_ok=True)
+                self.root.after(0, lambda: _log(f"[ERROR] Content update failed: {e}"))
+            finally:
+                _updater.release_update_lock()
         threading.Thread(target=_worker, daemon=True).start()
 
     def _connect_discord(self) -> None:
@@ -1296,7 +1419,10 @@ class BuckoApp:
 
 # ── Console commands list (for autocomplete) ──────────────────────────────────
 CONSOLE_COMMANDS: list[tuple[str, str]] = [
-    ("client.version",           "Show client version"),
+    ("client.version",           "Show app and client version"),
+    ("client.update.check",      "Check GitHub for a newer version"),
+    ("client.update",            "Download and apply latest Bucko.exe"),
+    ("client.update.content",    "Download and hot-reload latest core/ content"),
     ("client.restart",           "Restart the app"),
     ("client.quit",              "Quit the app"),
     ("client.config.reload",     "Reload client_config.yaml"),
@@ -1339,7 +1465,9 @@ CONSOLE_COMMANDS: list[tuple[str, str]] = [
 HELP_TEXT = """
 Bucko Console Commands
 ──────────────────────
-client.version         client.restart        client.quit
+client.version         client.update.check
+client.update          client.update.content
+client.restart         client.quit
 client.config.reload   client.config.validate
 
 cache.clean            chat.clear
