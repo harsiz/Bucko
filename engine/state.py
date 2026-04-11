@@ -26,6 +26,10 @@ class GameState:
         })
         self.flags: dict = save_data.get("flags", {})
         self.counters: dict = save_data.get("counters", {})
+
+        # Sync user_name into memory so {{memory.user.name}} works for returning users
+        if self.user_name:
+            self.memory.setdefault("user", {})["name"] = {"value": self.user_name}
         self.cycle_state: dict = save_data.get("cycle_state", {})
 
         # Subsystems
