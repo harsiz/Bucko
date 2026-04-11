@@ -45,11 +45,12 @@ class FollowUpBlock:
         for t in self.triggers:
             if not isinstance(t, dict):
                 continue
-            if "exact" in t and lowered == t["exact"].lower():
+            # YAML parses unquoted yes/no/true/false as booleans — coerce to str
+            if "exact" in t and lowered == str(t["exact"]).lower():
                 return True
             if "keywords" in t:
                 for kw in t["keywords"]:
-                    if kw.lower() in lowered:
+                    if str(kw).lower() in lowered:
                         return True
             if "pattern" in t:
                 try:
@@ -97,11 +98,11 @@ class DialogueBlock:
             if not isinstance(t, dict):
                 continue
             if "exact" in t:
-                if lowered == t["exact"].lower():
+                if lowered == str(t["exact"]).lower():
                     return True
             if "keywords" in t:
                 for kw in t["keywords"]:
-                    if kw.lower() in lowered:
+                    if str(kw).lower() in lowered:
                         return True
             if "pattern" in t:
                 try:
