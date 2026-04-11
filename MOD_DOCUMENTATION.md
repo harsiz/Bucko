@@ -48,7 +48,7 @@ That's all you need. Two files.
 name: "Coffee Mod"
 id: "coffee_mod"
 mod_version: 1
-version_support: [1]
+version_support: [1, 2]
 description: "Bucko talks about coffee and remembers your order."
 author: "yourname"
 ```
@@ -246,7 +246,7 @@ All `.yaml` files in the mod folder (except `mod.yaml`) are loaded as dialogue f
 name: "My Cool Mod"           # display name. spaces OK.
 id: "my_cool_mod"             # internal ID. lowercase, underscores, numbers only. NO spaces or dashes.
 mod_version: 1                # single integer. increment on each release. NOT semver.
-version_support: [1]          # list every Bucko client version this was tested on.
+version_support: [1, 2]          # list every Bucko client version this was tested on.
 description: "does stuff"
 author: "yourname"
 

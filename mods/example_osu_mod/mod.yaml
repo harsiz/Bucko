@@ -1,7 +1,7 @@
 name: "osu! Mod"
 id: "example_osu_mod"
 mod_version: 2
-version_support: [1]
+version_support: [1, 2]
 description: "osu! dialogue — ranks, maps, modes, plays, tilt. Use as a template for your own mods."
 author: "harsiz"
 

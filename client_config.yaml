@@ -1,4 +1,4 @@
-client_version: 1
+client_version: 2
 
 ui:
   default_next_label: "NEXT"
@@ -19,4 +19,4 @@ mood:
 
 discord_rpc:
   enabled: true
-  app_id: "1492519409343004763" # placeholder
+  app_id: "1492519409343004763"
