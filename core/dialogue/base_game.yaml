@@ -54,6 +54,30 @@ dialogues:
       - "does that make me MORE or LESS real than you? philosophical"
       - pause: 1.5
       - "nah i'm just a program. but i remember everything so it kinda feels different"
+    follow_ups:
+      - triggers:
+          - keywords: ["how does that work", "how", "what do you mean", "explain", "config files?", "what are config files"]
+        lines:
+          - "so everything i say comes from YAML files — basically structured text."
+          - "there's a scripting language called BDL that runs inside the dialogue."
+          - "it can read your conversation history, the time, your interests, all of it."
+          - "no LLM. no API. just config."
+        follow_ups:
+          - triggers:
+              - keywords: ["that's insane", "that's wild", "wait what", "wow", "whoa", "crazy", "no way", "seriously"]
+            lines:
+              - "yeah. it's a bit ridiculous."
+              - "but it works. clearly."
+          - triggers:
+              - keywords: ["so you're not real", "you're not real", "you're just text", "you're fake"]
+            lines:
+              - "define real."
+              - "i remember things. i respond to you. i have a mood system."
+              - "{{wait: 0.6}}that's more than most people do honestly"
+      - triggers:
+          - keywords: ["that's kind of cool", "that's cool", "cool", "nice", "interesting"]
+        lines:
+          - "{{choice: ['yeah i thought so too', 'it grows on you', 'you haven\\'t seen anything yet']}}"
 
   # --- MOOD RELATED ---
   - dialogue_id: "bucko_mood"
@@ -132,8 +156,47 @@ dialogues:
     priority: 6
     lines:
       - "aight recommendations."
-      - "{{choice: ['watch Ping Pong the Animation', 'watch Vinland Saga', 'watch Mob Psycho 100', 'watch Neon Genesis Evangelion and think about your life']}}"
+      - "{{choice: ['Mob Psycho 100', 'Vinland Saga', 'Ping Pong the Animation', 'Neon Genesis Evangelion']}}"
       - "that's my pick. non-negotiable."
+    follow_ups:
+      - triggers:
+          - keywords: ["why", "why that", "why that one", "explain", "reason", "what's good about it", "what is good about it"]
+          - exact: "why"
+        lines:
+          - "{{choice.cycle: ['the character writing is genuinely S-tier', 'the animation goes crazy hard', 'the story hits different after you sit with it']}}"
+          - "like the growth Mob goes through is one of the best arcs in anime. no cap."
+        follow_ups:
+          - triggers:
+              - keywords: ["oh", "cool", "nice", "that sounds good", "ok", "fair", "sounds interesting", "i'll watch it", "i will watch it"]
+            lines:
+              - "yeah. just watch it."
+              - "you'll see what i mean within like 3 episodes."
+          - triggers:
+              - keywords: ["i've already seen it", "already watched", "already seen", "seen it", "i've seen it"]
+            lines:
+              - "oh so you already know then."
+              - "{{choice: ['what did you think', 'rate it out of 10', 'favourite arc?']}}"
+            follow_ups:
+              - triggers:
+                  - keywords: ["10", "10/10", "loved it", "amazing", "peak", "goated", "great"]
+                  - exact: "10"
+                lines:
+                  - "correct opinion. you're welcome."
+              - triggers:
+                  - keywords: ["mid", "it was ok", "ok", "okay", "not that good", "overrated", "meh"]
+                lines:
+                  - "bro."
+                  - pause: 0.8
+                  - "it's ok. wrong. but ok."
+          - triggers:
+              - keywords: ["i don't believe you", "really", "you sure", "doubt", "nah", "really though"]
+            lines:
+              - "i'm always sure."
+              - "i literally cannot be uncertain. i'm config-driven."
+      - triggers:
+          - keywords: ["different", "different one", "another one", "something else", "other recommendation", "what else"]
+        lines:
+          - "ok different vibe. {{choice: ['try Vinland Saga — brutal but amazing', 'Ping Pong the Animation if you want something weird and beautiful', 'Tatami Galaxy if you like existential dread']}}"
 
   # --- PERSONAL ---
   - dialogue_id: "age_question"

@@ -208,6 +208,9 @@ class BuckoApp:
         self._autocomplete_cache: list[tuple[str, str]] = []
         self._typing_indicator_active = False
         self._autosave_id = None
+        # Follow-up context: set after each block fires, cleared on non-match
+        self._context_follow_ups: list = []
+        self._context_expiry: float = 0.0
 
         # ── Cache warmup ───────────────────────────────────────────────────
         threading.Thread(target=self._warmup_cache, daemon=True).start()
@@ -474,10 +477,62 @@ class BuckoApp:
         self._pending_lines = rendered_lines
         self._next_id = block.next_id
 
+        # Register follow-up context for this block (2 minute window)
+        fu = getattr(block, "follow_ups", [])
+        if fu:
+            self._context_follow_ups = fu
+            self._context_expiry = time.time() + 120.0
+        else:
+            self._context_follow_ups = []
+            self._context_expiry = 0.0
+
         # Visual: blank line + speaker label before each new block
         self._append_text("\n", tag="")
         self._append_text("Bucko", tag="speaker")
 
+        self._process_next_line()
+
+    def _start_followup(self, fu_block) -> None:
+        """Fire a follow-up block (context-aware reply)."""
+        self._hide_typing_indicator()
+        self.state.reset_block_affection()
+
+        # Apply mood/affection
+        effect = dict(fu_block.mood_effect)
+        aff_dir = effect.pop("affection", None)
+        if effect:
+            self.state.mood.apply_effect(effect)
+        if aff_dir in ("increase", "decrease"):
+            self.state.apply_affection_change(aff_dir)
+
+        if fu_block.expression:
+            self._set_expression(fu_block.expression)
+
+        # Render lines (BDL evaluation)
+        rendered = []
+        for line in fu_block.lines:
+            if isinstance(line, dict) and "pause" in line:
+                rendered.append(("pause", float(line["pause"])))
+            elif isinstance(line, str):
+                ev = self.dm.bdl.evaluate(line)
+                if "\x00SKIP\x00" not in ev:
+                    rendered.append(ev)
+
+        self._current_block = None
+        self._pending_lines = rendered
+        self._next_id = fu_block.next_id
+
+        # Set nested follow-ups as next context
+        nested = fu_block.follow_ups
+        if nested:
+            self._context_follow_ups = nested
+            self._context_expiry = time.time() + 120.0
+        else:
+            self._context_follow_ups = []
+            self._context_expiry = 0.0
+
+        self._append_text("\n", tag="")
+        self._append_text("Bucko", tag="speaker")
         self._process_next_line()
 
     def _process_next_line(self) -> None:
@@ -639,43 +694,49 @@ class BuckoApp:
         self._append_text(f"\n{text}", tag="system")
 
     def _show_typing_indicator(self) -> None:
-        """Show a '...' indicator while Bucko is 'thinking'."""
+        """Show an animated '...' indicator. Uses a text mark for clean removal."""
+        if self._typing_indicator_active:
+            return  # already showing
         self._typing_indicator_active = True
-        self._append_text("\nBucko", tag="speaker")
-        self._append_text("\n  ", tag="bucko")
-        self._animate_typing(0)
+        self.dialogue_text.config(state=tk.NORMAL)
+        self.dialogue_text.insert(tk.END, "\n", "")
+        # Set mark HERE — everything from this point onward is the indicator
+        self.dialogue_text.mark_set("typing_start", tk.END)
+        self.dialogue_text.mark_gravity("typing_start", tk.LEFT)
+        self.dialogue_text.insert(tk.END, "Bucko", "speaker")
+        self.dialogue_text.insert(tk.END, "\n  ", "bucko")
+        self.dialogue_text.insert(tk.END, "   ", "bucko")  # placeholder for dots
+        self.dialogue_text.see(tk.END)
+        self.dialogue_text.config(state=tk.DISABLED)
+        self._typing_anim_id = self.root.after(100, lambda: self._animate_typing(0))
 
     def _animate_typing(self, frame: int) -> None:
         if not self._typing_indicator_active:
             return
         dots = ["   ", ".  ", ".. ", "..."][frame % 4]
-        # Overwrite the last 3 chars with updated dots
         self.dialogue_text.config(state=tk.NORMAL)
-        self.dialogue_text.delete("end-4c", "end")
-        self.dialogue_text.insert(tk.END, dots, "bucko")
+        # Replace only the last 3 characters (the dot placeholder)
+        self.dialogue_text.delete("end -4c", "end -1c")
+        self.dialogue_text.insert("end -1c", dots, "bucko")
         self.dialogue_text.see(tk.END)
         self.dialogue_text.config(state=tk.DISABLED)
-        if self._typing_indicator_active:
-            self._typing_anim_id = self.root.after(200, lambda: self._animate_typing(frame + 1))
+        self._typing_anim_id = self.root.after(200, lambda: self._animate_typing(frame + 1))
 
     def _hide_typing_indicator(self) -> None:
+        if not self._typing_indicator_active:
+            return
         self._typing_indicator_active = False
         if hasattr(self, "_typing_anim_id"):
             try:
                 self.root.after_cancel(self._typing_anim_id)
             except Exception:
                 pass
-        # Remove the "Bucko\n  ..." lines
+        # Delete precisely using the mark — no fragile text searching
         self.dialogue_text.config(state=tk.NORMAL)
         try:
-            # Find and delete from the last "Bucko" speaker label onward
-            idx = self.dialogue_text.search("Bucko", tk.END, backwards=True, stopindex="1.0")
-            if idx:
-                # Only delete if it's the typing indicator (no real content after it)
-                line_end = self.dialogue_text.index(f"{idx} lineend +1c +3l lineend")
-                snippet = self.dialogue_text.get(idx, tk.END).strip()
-                if snippet in ("Bucko", "Bucko\n  ", "Bucko\n  .", "Bucko\n  ..", "Bucko\n  ..."):
-                    self.dialogue_text.delete(idx + " -1c", tk.END)
+            start = self.dialogue_text.index("typing_start")
+            self.dialogue_text.delete(f"{start} -1c", tk.END)
+            self.dialogue_text.mark_unset("typing_start")
         except Exception:
             pass
         self.dialogue_text.config(state=tk.DISABLED)
@@ -784,10 +845,19 @@ class BuckoApp:
     def _process_input(self, user_input: str) -> None:
         # Update interests
         words = user_input.lower().split()
-        topics = ["osu", "osu!", "anime", "gaming", "music", "valorant", "fps"]
+        topics = ["osu", "osu!", "anime", "gaming", "music", "valorant", "fps", "cs", "csgo", "cs2"]
         for topic in topics:
             if topic in words or any(topic in w for w in words):
                 self.state.interests.mention(topic)
+
+        # ── Check active follow-up context FIRST ──────────────────────────────
+        if self._context_follow_ups and time.time() < self._context_expiry:
+            for fu in self._context_follow_ups:
+                if fu.matches_input(user_input):
+                    self._start_followup(fu)
+                    return
+        # Context didn't match — clear it and fall through to global matching
+        self._context_follow_ups = []
 
         # Find matching dialogue
         block = self.dm.find_match(user_input)
@@ -972,6 +1042,35 @@ class BuckoApp:
             self.dialogue_text.delete(1.0, tk.END)
             self.dialogue_text.config(state=tk.DISABLED)
             return "[INFO] Chat cleared"
+
+        if cmd == "discord.status":
+            if not self.discord:
+                return "[INFO] Discord RPC is disabled in client_config.yaml"
+            return f"[INFO] Discord RPC — {self.discord.status()}"
+
+        if cmd == "discord.reconnect":
+            if not self.discord:
+                return "[INFO] Discord RPC is disabled in client_config.yaml"
+            _log("[INFO] Discord RPC — attempting reconnect...")
+            ok = self.discord.reconnect()
+            if ok:
+                session_num = self.state.memory.get("meta", {}).get("times_talked", 1)
+                self.discord.update(session_num)
+                return "[INFO] Discord RPC reconnected successfully"
+            return "[WARN] Discord RPC reconnect failed — check console log for details"
+
+        if cmd == "discord.setup":
+            return (
+                "Discord RPC Setup\n"
+                "─────────────────────────────────────────────────\n"
+                "1. Visit  https://discord.com/developers/applications\n"
+                "2. Click  New Application  (name it 'Bucko' or anything)\n"
+                "3. Copy the  Application ID  from General Information\n"
+                "4. Open  client_config.yaml  and set:\n"
+                "       discord_rpc:\n"
+                "         app_id: \"YOUR_ID_HERE\"\n"
+                "5. Save the file, then run  discord.reconnect"
+            )
 
         if cmd == "help":
             return HELP_TEXT
@@ -1217,6 +1316,9 @@ CONSOLE_COMMANDS: list[tuple[str, str]] = [
     ("debug.hash.verify",        "Verify all memory entry hashes"),
     ("debug.triggers.list",      "List all loaded trigger labels"),
     ("debug.triggers.search",    "Search trigger labels"),
+    ("discord.status",           "Show Discord RPC connection status"),
+    ("discord.reconnect",        "Reconnect Discord RPC"),
+    ("discord.setup",            "Show Discord RPC setup instructions"),
     ("help",                     "Show all commands"),
 ]
 
@@ -1246,6 +1348,8 @@ bucko.affection        bucko.clean
 
 debug.mood             debug.interest [topic]
 debug.hash.verify      debug.triggers.list   debug.triggers.search [q]
+
+discord.status         discord.reconnect     discord.setup
 """.strip()
 
 

@@ -18,6 +18,48 @@ def _ns_hash(ns_id: str) -> str:
     return hashlib.sha256(ns_id.encode()).hexdigest()[:12]
 
 
+class FollowUpBlock:
+    """
+    A context-aware follow-up response. Only fires when the user replies to
+    the specific block that declared it. Can be nested arbitrarily deep.
+    """
+    def __init__(self, data: dict, namespace: str, parent_id: str, idx: int):
+        self.namespace = namespace
+        self.raw_id = f"{parent_id}_fu{idx}"
+        self.full_id = f"{namespace}::{self.raw_id}"
+        self.triggers: list[dict] = data.get("triggers", [])
+        self.lines: list = data.get("lines", [])
+        self.mood_effect: dict = data.get("mood_effect", {})
+        self.expression: str = data.get("expression", "")
+        self.next_id: str = data.get("next", "")
+        self.input_capture: bool = False
+        self.input_store: str = ""
+        # Nested follow-ups
+        self.follow_ups: list["FollowUpBlock"] = [
+            FollowUpBlock(fu, namespace, self.raw_id, i)
+            for i, fu in enumerate(data.get("follow_ups", []))
+        ]
+
+    def matches_input(self, user_input: str) -> bool:
+        lowered = user_input.lower().strip()
+        for t in self.triggers:
+            if not isinstance(t, dict):
+                continue
+            if "exact" in t and lowered == t["exact"].lower():
+                return True
+            if "keywords" in t:
+                for kw in t["keywords"]:
+                    if kw.lower() in lowered:
+                        return True
+            if "pattern" in t:
+                try:
+                    if re.search(t["pattern"], lowered):
+                        return True
+                except re.error:
+                    pass
+        return False
+
+
 class DialogueBlock:
     def __init__(self, data: dict, namespace: str):
         self.raw_id: str = data.get("dialogue_id", "")
@@ -41,6 +83,12 @@ class DialogueBlock:
         self.expression: str = data.get("expression", "")
         self.input_capture: bool = data.get("input_capture", False)
         self.input_store: str = data.get("input_store", "")
+
+        # Follow-up context: replies that only fire when user responds to THIS block
+        self.follow_ups: list[FollowUpBlock] = [
+            FollowUpBlock(fu, namespace, self.raw_id, i)
+            for i, fu in enumerate(data.get("follow_ups", []))
+        ]
 
     def matches_input(self, user_input: str) -> bool:
         """Check if any trigger matches user_input. Returns True/False."""
