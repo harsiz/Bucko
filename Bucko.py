@@ -183,6 +183,7 @@ class BuckoApp:
                 "logs_clean": self._logs_clean,
                 "logs_export": self._logs_export,
                 "trigger_dialogue": self._trigger_dialogue_from_console,
+                "install_mod": self._install_mod_async,
             }
         )
 
@@ -1272,6 +1273,14 @@ class BuckoApp:
         _cache.warmup(config_files)
         _cache.start_watcher(config_files)
 
+    def _install_mod_async(self, source: str) -> None:
+        """Run mod installation in a background thread to keep the GUI responsive."""
+        def _worker():
+            ok, msg = self.mm.install_mod(source, self.dm)
+            # Schedule the log output back on the main thread so Tkinter is happy
+            self.root.after(0, lambda: _log(msg))
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _connect_discord(self) -> None:
         if self.discord:
             self.discord.connect()
@@ -1297,7 +1306,7 @@ CONSOLE_COMMANDS: list[tuple[str, str]] = [
     ("logs.clean",               "Clear console log output"),
     ("logs.export",              "Export logs to a file"),
     ("mod.list",                 "List all loaded mods"),
-    ("mod.install",              "Install a mod from path/url"),
+    ("mod.install",              "Install a mod from a URL or local path"),
     ("mod.uninstall",            "Uninstall a mod by id"),
     ("mod.reload",               "Reload a mod by id"),
     ("mod.info",                 "Show mod info by id"),

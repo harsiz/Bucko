@@ -86,7 +86,15 @@ class ConsoleSystem:
             return self._cmd_mod_list()
 
         if cmd.startswith("mod.install "):
-            return f"[TODO] Mod installation not yet implemented"
+            source = cmd.split(maxsplit=1)[1].strip()
+            if not source:
+                return "[ERROR] Usage: mod.install <url or path>"
+            if cb := self.app.get("install_mod"):
+                cb(source)
+                return f"[INFO] Installing from '{source}'...\n  Check the console log for progress."
+            # Fallback: run synchronously (no threading callback registered)
+            ok, msg = self.mm.install_mod(source, self.dm)
+            return msg
 
         if cmd.startswith("mod.uninstall "):
             return f"[TODO] Mod uninstall not yet implemented"

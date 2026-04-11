@@ -988,6 +988,21 @@ console_commands:
 
 Users access them as `mod.[mod_id].[command]` (e.g. `mod.coffee_mod.reset`).
 
+### Installing mods
+
+```
+mod.install https://github.com/someone/their-mod
+mod.install https://github.com/someone/their-mod.git
+mod.install C:\Users\you\Downloads\my_mod_folder
+```
+
+- Tries `git clone --depth 1` first (fast, requires git in PATH)
+- Falls back to GitHub zip download if git fails or isn't installed
+- Works with any GitHub URL — public repos only for zip download
+- Local path: copies the folder into `mods/`
+- No restart needed — mod loads and its dialogue blocks go live immediately
+- Fails cleanly if there's no `mod.yaml`, an invalid id, or the folder already exists
+
 ### Built-in commands
 
 ```
@@ -998,7 +1013,7 @@ cache.clean            chat.clear
 
 logs.clean             logs.export [path]
 
-mod.list               mod.install [path]    mod.uninstall [id]
+mod.list               mod.install [url/path]   mod.uninstall [id]
 mod.reload [id]        mod.info [id]         mod.validate [id]
 mod.enable [id]        mod.disable [id]
 mod.[id].clean         mod.[id].[command]
