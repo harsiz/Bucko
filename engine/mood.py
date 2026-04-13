@@ -45,6 +45,33 @@ class MoodSystem:
     def to_dict(self) -> dict:
         return dict(self._state)
 
+    @property
+    def label(self) -> str:
+        """Single-word mood summary derived from the 4D state vector."""
+        s = self._state
+        e, p, c, w = s["energy"], s["patience"], s["chaos"], s["warmth"]
+        if p <= 25:
+            return "angry"
+        if p <= 40:
+            return "annoyed"
+        if e <= 25:
+            return "tired"
+        if c >= 80:
+            return "chaotic"
+        if w >= 80 and e >= 70:
+            return "cheerful"
+        if w >= 65 and e >= 55:
+            return "happy"
+        if w <= 30:
+            return "cold"
+        if e >= 80:
+            return "hyper"
+        if c >= 60:
+            return "playful"
+        if e <= 40:
+            return "mellow"
+        return "neutral"
+
     def _apply_decay(self) -> None:
         now = time.time()
         elapsed_minutes = (now - self._last_decay) / 60.0

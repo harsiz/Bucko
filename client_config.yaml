@@ -20,3 +20,8 @@ mood:
 discord_rpc:
   enabled: true
   app_id: "1492519409343004763"
+
+# Idle timeout in minutes. If the user hasn't typed anything for this long,
+# Bucko will send a random dialogue block marked with `idle: true`.
+# Set to 0 (or remove) to disable.
+idle_timeout_minutes: 0

@@ -5,6 +5,7 @@ Entry point. Run this directly or compile via build.py.
 import sys
 import os
 import time
+import random
 import threading
 import tkinter as tk
 from tkinter import scrolledtext
@@ -87,6 +88,9 @@ MOOD_BASELINE = _cfg.get("mood", {}).get("baseline", {
 DECAY_RATE = _cfg.get("mood", {}).get("decay_rate", 1.0)
 DISCORD_ENABLED = _cfg.get("discord_rpc", {}).get("enabled", True)
 DISCORD_APP_ID = str(_cfg.get("discord_rpc", {}).get("app_id", "0"))
+# Idle timeout: 0 = disabled. If set, Bucko fires a random idle: true block
+# after this many minutes of no user input.
+IDLE_TIMEOUT_MINUTES = _cfg.get("idle_timeout_minutes", 0)
 
 
 # ── Cache + config loader ──────────────────────────────────────────────────────
@@ -220,6 +224,11 @@ class BuckoApp:
         # Follow-up context: set after each block fires, cleared on non-match
         self._context_follow_ups: list = []
         self._context_expiry: float = 0.0
+        # Chat input history (up/down to navigate, like the console)
+        self._input_history: list[str] = []
+        self._input_history_idx: int = -1
+        # Idle timer
+        self._idle_timer_id = None
 
         # ── Cache warmup ───────────────────────────────────────────────────
         threading.Thread(target=self._warmup_cache, daemon=True).start()
@@ -302,6 +311,15 @@ class BuckoApp:
             anchor="center",
         )
         self.expr_label.pack(fill=BOTH, expand=True)
+
+        self.status_label = ttk.Label(
+            self.expr_frame,
+            text="",
+            font=("Consolas", 9),
+            foreground="#555577",
+            anchor="center",
+        )
+        self.status_label.pack(fill=X, pady=(0, 4))
 
         # Dialogue area (right)
         right = ttk.Frame(top)
@@ -460,6 +478,9 @@ class BuckoApp:
         if self.discord:
             self.discord.update(session_num)
 
+        self._update_status_label()
+        self._reset_idle_timer()
+
         if self.is_first_launch or not self.state.user_name:
             self._trigger_dialogue_id("setup::disclaimer")
         else:
@@ -478,6 +499,42 @@ class BuckoApp:
 
     def _trigger_dialogue_from_console(self, block) -> None:
         self.root.after(0, lambda: self._start_block(block))
+
+    def _update_status_label(self) -> None:
+        """Refresh the mood/affection line under the expression face."""
+        try:
+            mood = self.state.mood.label
+            aff = self.state.affection.display_value
+            self.status_label.config(text=f"{mood}  ♥{aff}")
+        except Exception:
+            pass
+
+    def _reset_idle_timer(self) -> None:
+        """Cancel any pending idle timer and schedule a new one (if enabled)."""
+        if self._idle_timer_id is not None:
+            try:
+                self.root.after_cancel(self._idle_timer_id)
+            except Exception:
+                pass
+            self._idle_timer_id = None
+        if IDLE_TIMEOUT_MINUTES > 0:
+            ms = int(IDLE_TIMEOUT_MINUTES * 60 * 1000)
+            self._idle_timer_id = self.root.after(ms, self._on_idle_fire)
+
+    def _on_idle_fire(self) -> None:
+        """Fire a random idle dialogue block when the idle timer expires."""
+        self._idle_timer_id = None
+        if not self._awaiting_input:
+            # Bucko is mid-response; reschedule rather than interrupt
+            self._reset_idle_timer()
+            return
+        candidates = self.dm.get_idle_blocks()
+        if not candidates:
+            return
+        block = random.choice(candidates)
+        self._awaiting_input = False
+        self._disable_input()
+        self._start_block(block)
 
     def _on_callback_exception(self, exc_type, exc_val, exc_tb) -> None:
         """
@@ -530,6 +587,8 @@ class BuckoApp:
             self._context_follow_ups = []
             self._context_expiry = 0.0
 
+        self._update_status_label()
+
         # Visual: blank line + speaker label before each new block
         self._append_text("\n", tag="")
         self._append_text("Bucko", tag="speaker")
@@ -574,6 +633,8 @@ class BuckoApp:
         else:
             self._context_follow_ups = []
             self._context_expiry = 0.0
+
+        self._update_status_label()
 
         self._append_text("\n", tag="")
         self._append_text("Bucko", tag="speaker")
@@ -854,6 +915,12 @@ class BuckoApp:
         if not self._awaiting_input:
             return
 
+        # Track input history (skip duplicates of the last entry)
+        if not self._input_history or self._input_history[-1] != text:
+            self._input_history.append(text)
+        self._input_history_idx = -1
+
+        self._reset_idle_timer()
         self._append_user_line(text)
         self._awaiting_input = False
         self._disable_input()
@@ -1010,7 +1077,8 @@ class BuckoApp:
 
     def _autocomplete_up(self, event=None) -> None:
         if not self._autocomplete_visible:
-            return
+            self._input_history_up()
+            return "break"
         cur = self.autocomplete_listbox.curselection()
         if cur:
             idx = max(0, cur[0] - 1)
@@ -1022,7 +1090,8 @@ class BuckoApp:
 
     def _autocomplete_down(self, event=None) -> None:
         if not self._autocomplete_visible:
-            return
+            self._input_history_down()
+            return "break"
         cur = self.autocomplete_listbox.curselection()
         if cur:
             idx = min(self.autocomplete_listbox.size() - 1, cur[0] + 1)
@@ -1031,6 +1100,26 @@ class BuckoApp:
         self.autocomplete_listbox.selection_clear(0, tk.END)
         self.autocomplete_listbox.selection_set(idx)
         return "break"
+
+    def _input_history_up(self) -> None:
+        if not self._input_history:
+            return
+        if self._input_history_idx < 0:
+            self._input_history_idx = len(self._input_history) - 1
+        else:
+            self._input_history_idx = max(0, self._input_history_idx - 1)
+        self.input_var.set(self._input_history[self._input_history_idx])
+        self.input_entry.icursor(tk.END)
+
+    def _input_history_down(self) -> None:
+        if self._input_history_idx < 0:
+            return
+        if self._input_history_idx >= len(self._input_history) - 1:
+            self._input_history_idx = -1
+            self.input_var.set("")
+        else:
+            self._input_history_idx += 1
+            self.input_var.set(self._input_history[self._input_history_idx])
 
     def _autocomplete_select(self, event=None) -> None:
         cur = self.autocomplete_listbox.curselection()

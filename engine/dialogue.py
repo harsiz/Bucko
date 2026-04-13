@@ -85,6 +85,8 @@ class DialogueBlock:
         self.input_capture: bool = data.get("input_capture", False)
         self.input_store: str = data.get("input_store", "")
 
+        self.idle: bool = bool(data.get("idle", False))
+
         # Follow-up context: replies that only fire when user responds to THIS block
         self.follow_ups: list[FollowUpBlock] = [
             FollowUpBlock(fu, namespace, self.raw_id, i)
@@ -270,6 +272,10 @@ class DialogueManager:
         if self._no_match_responses:
             return random.choice(self._no_match_responses)
         return None
+
+    def get_idle_blocks(self) -> list[DialogueBlock]:
+        """Return all blocks marked idle: true that are not on cooldown."""
+        return [b for b in self._blocks if b.idle and not b.is_on_cooldown()]
 
     # ------------------------------------------------------------------ #
     #  Repeat tracking
