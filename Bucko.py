@@ -974,13 +974,15 @@ class BuckoApp:
                 self.state.interests.mention(topic)
 
         # ── Check active follow-up context FIRST ──────────────────────────────
+        # Follow-ups always win over global blocks — checked before any global
+        # matching. Context is kept alive even if this input doesn't match any
+        # follow-up, so a later message can still hit it within the 2-min window.
+        # _start_block / _start_followup overwrite the context when they run.
         if self._context_follow_ups and time.time() < self._context_expiry:
             for fu in self._context_follow_ups:
                 if fu.matches_input(user_input):
                     self._start_followup(fu)
                     return
-        # Context didn't match — clear it and fall through to global matching
-        self._context_follow_ups = []
 
         # Find matching dialogue
         block = self.dm.find_match(user_input)
